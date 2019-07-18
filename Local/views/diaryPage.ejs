@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+		<meta charset="utf-8">
+		<title>BSafes - Organize and Secure Your Data</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <%
+      var fontawesomeV4 = true;
+      var editableCSS = true;
+    %>
+    <% include stylesheets %>
+    <% include commonHeader %>
+  </head>
+  <body class="bSafesBody">
+		<span class='hidden' id='itemId'><%=itemId%></span>
+    <% include navBar %>
+		<% include pathRow %>
+
+    <div class="container">
+			<div class="row">
+        <div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-lg-8 col-lg-offset-2">
+					<div class="containerControlsPanel panel panel-default">
+  					<div class="panel-body diaryControlsPanelBody">
+          		<div class="row">
+            		<div class="col-xs-4 col-xs-offset-0">
+									<button class="containerControlsBtn btn btn-link btn-xs pageNavigationPart" type="button" id="gotoCoverBtn"><i class="fa fa-book" aria-hidden="true"></i></button>
+              		<button class="containerControlsBtn btn btn-link btn-xs pageNavigationPart" type="button" id="gotoContentsBtn"><i class="fa fa-list-ul" aria-hidden="true"></i></button>
+            		</div>
+            		<div class="col-xs-8">
+              		<div class="input-group pageNumberNavigation pageNavigation pull-right">
+										<input type="hidden" class="pageNavigationPart" id="datepicker">
+										<button class="datePickerBtn containerControlsBtn btn btn-link btn-xs pageNavigationPart" type="button"><i class="fa fa-calendar fa-lg" aria-hidden="true"></i></button>
+              		</div>
+            		</div>
+          		</div>
+  					</div>
+					</div>
+				</div>
+			</div>	
+
+			<div class="pagePanel diaryPanel diaryPagePanel">
+				<% include itemTopRows %>
+				<div class="diaryDateRow row pageRow">
+          <div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">
+            <h2 id="todayRelative"></h2>
+						<h4 class="diaryPageDateText"></h4>
+          </div>
+        </div>
+        <div class="row pageRow">
+          <div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">
+            <hr class="diaryHRBelowDate">
+          </div>
+        </div>
+				<% include pageCommons %>
+			</div>
+		</div>
+    <div class="turningPageRow">
+      <a href="#" id="previousPageBtn" class="pageBtn btn btn-default previousPageBtn pageNavigation"><i class="fa fa-chevron-left" aria-hidden="true"></i></a>
+			<a href="#" id="nextPageBtn" class="pageBtn btn btn-default nextPageBtn pageNavigation"><i class="fa fa-chevron-right" aria-hidden="true"></i></a>
+    </div>
+    <% include navBarBottom %>
+		<% include pageCommonControls  %>
+    <%
+      var loadForgeJS = true;
+      var tagsJS = true;
+      var diaryPageJS = true;
+			var pageControlJS = true;
+      var editorJS = true;
+      var keyVerifiedState = true;
+    %>
+    <% include scripts %>
+
+  </body>
+</html>

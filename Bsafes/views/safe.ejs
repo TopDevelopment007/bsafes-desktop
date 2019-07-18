@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+		<meta charset="utf-8">
+		<title>Your BSafes</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <%
+      var fontawesomeV4 = true;
+    %>
+    <% include stylesheets %>
+    <% include commonHeader %>
+  </head>
+  <body class="">
+		<span class='hidden' id='teamId'><%=teamId%></span>
+    <% include navBar %>
+		<div class="row margin0Px">
+			<div class="col-xs-9 paddingLeft0Px">
+	      <ul class="breadcrumb">
+					<li class="teamsPathItem"><a href="teams.ejs" class="teamsPathLink">&nbsp<i class="fa fa-building" aria-hidden="true"></i> Teams&nbsp</a></li>
+  	      <li><a id="teamName" href="#">Home</a><span>  </span></li>
+    	  </ul>
+			</div>
+			<div class="col-xs-3">
+				<a href="#" class="btn btn-primary pull-right dropdown-toggle" id="addANewTabBtn" data-toggle="dropdown"><i class="fa fa-plus" aria-hidden="true"></i></a>
+				<ul class="pull-right dropdown-menu newTabDropdownMenu">
+          <li id="newTabHint"><a href="#"><span class="whiteText fontWeightBold">Add a new tab</span></a></li>
+					<li><a href="teams.ejs" target="_blank"><span class="fontWeightBold">Teams</span></a></li>	
+          <li class="newTabTemplate hidden "><a href="#" target="_blank">Another tab</a></li>
+        </ul>
+			</div>
+		</div>
+    <div class="container">
+    	<div class="accessTrialRow row hidden">
+       	<div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2 text-center" >
+					<a href="#" id="accessTrial">Access your trial from other devices&nbsp&nbsp<i class="fa fa-share" aria-hidden="true"></i></a>
+				</div>
+			</div>
+			<% include copyLink %>
+      <div class="row">
+        <div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2 text-center">
+          <a href="/activities/" id="activitiesLink">Activities</a>
+        </div>
+      </div>
+
+			<div class="row">
+        <div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">
+					<div class="form-group">
+  					<div class="input-group">
+    					<input type="text" class="form-control input-lg" id="searchInput">
+    					<span class="input-group-btn">
+      					<button class="btn btn-link" type="button" id="searchBtn"><i class="fa fa-search" aria-hidden="true"></i></button>
+    					</span>
+  					</div>
+					</div>	
+				</div>
+      </div>
+      <div class="addAnItemRow row">
+        <div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2 text-center">
+        	<button class="btn btn-primary btn-circle" data-toggle="modal" data-target="#newItemOptionsModal" type="button" id="addAnItemBtn"><i class="fa fa-plus fa-lg" aria-hidden="true"></i></button>
+				</div>
+      </div>
+      <br>
+			<%include gettingStartedNotice%>
+      <div class="row cancelSearchRow hidden">
+        <div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">
+          <button class="btn btn-default btn-circle pull-right" data-toggle="modal" data-target="#newItemOptionsModal" type="button" id="cancelSearchBtn"><i class="fa fa-times fa-lg" aria-hidden="true"></i></button>
+        </div>
+      </div>
+			<br>
+      <div class="row hidden">
+        <div class="col-xs-12 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2 text-center">
+					<div class="marginBottom10Px">
+          <ul class="listOptionsTab nav nav-tabs text-center">
+            <li id="listAllItems"><a href="#">All</a></li>
+          </ul>
+					</div>
+        </div>
+      </div>
+			<div class="results">
+				<div class="resultItems safeResultItems">
+				</div>
+				<div class="row">
+          <div class="col-xs-10 col-xs-offset-1">
+            <div class="textAlignCenter">
+              <ul class="containerContentsPagination pagination pagination-sm hidden">
+              </ul>
+            </div>
+          </div>
+        </div>
+				<div class="resultItemTemplate row hidden">
+					<div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">
+						<div class="resultItemPanel panel panel-default">
+							<div class="resultItemPanelBody panel-body">
+								<div class="row">
+									<a href="#" class="itemLink blackText">
+										<div class="col-xs-9 col-xs-offset-0 marginTop7Px">	
+											<p class="itemTitle blackText fontSize130Percent">Hello World</p>
+										</div>
+									</a>
+									<div class="col-xs-3">
+										<div class="btn-group pull-right">
+											<button class="itemControl addItemBtn dropdown-toggle btn btn-link btn-xs" data-toggle="dropdown" type="button"><i class="fa fa-plus" aria-hidden="true"></i></button>
+                   		<ul class="dropdown-menu">
+                     		<li><a class="addAction addBefore" href="#">Add before</a></li>
+                     		<li><a class="addAction addAfter" href="#">Add after</a></li>
+                   		</ul>
+										</div>
+										<div class="btn-group pull-right">
+											<button class="itemControl itemActionBtn dropdown-toggle btn btn-link btn-xs pull-right hidden" data-toggle="dropdown" type="button"><i class="fa fa-sort" aria-hidden="true"></i></button>
+											<ul class="dropdown-menu">
+    										<li><a class="dropAction dropBefore" href="#">Drop before</a></li>
+    										<li><a class="dropAction dropInside" href="#">Drop inside</a></li>
+    										<li><a class="dropAction dropAfter" href="#">Drop after</a></li>
+  										</ul>
+										</div>
+										<div class="checkbox pull-right">
+            					<input type="checkbox" class="itemControl selectItemBox">
+        						</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<% include trashBoxRow %>
+			<br>
+  		<!-- New item options modal -->
+  		<div class="modal fade" id="newItemOptionsModal" tabindex="-1" role="dialog" aria-labelledby="newItemOptionsModalLabel" aria-hidden="true">
+    		<div class="modal-dialog">
+      		<div class="modal-content">
+        		<div class="modal-header">
+          		<button type="button" class="close" id="closeNewItemOptionsModal" data-dismiss="modal" aria-hidden="true">&times;</button>
+          		<h4 class="modal-title" id="newItemOptionsModalLabel">Please Select a Type</h4>
+        		</div>
+        		<div class="modal-body">
+							<div class="list-group">
+            		<a href="/safe/createAPage" target="_blank" class="list-group-item safeItemOption" id="Page">
+              		<i class="fa fa-file-text-o safeItemTypeIcon" aria-hidden="true"></i><em>Page</em>
+            		</a>
+            		<a href="/safe/createANotebook" target="_blank" class="list-group-item safeItemOption" id="Notebook">
+              		<i class="fa fa-book safeItemTypeIcon" aria-hidden="true"></i><em>Notebook</em>
+            		</a>
+            		<a href="#" class="list-group-item safeItemOption" id="Diary">
+              		<i class="fa fa-calendar safeItemTypeIcon" aria-hidden="true"></i><em>Diary</em>
+            		</a>
+            		<a href="/safe/createABox" target="_blank" class="list-group-item safeItemOption safeItemBoxTypeOption" id="Box">
+              		<i class="fa fa-archive safeItemTypeIcon" aria-hidden="true"></i><em>Box</em>
+            		</a>
+            		<a href="/safe/createAFolder" target="_blank" class="list-group-item safeItemOption safeItemFolderTypeOption" id="Folder">
+              		<i class="fa fa-folder-o safeItemTypeIcon" aria-hidden="true"></i><em>Folder</em>
+            		</a>
+          		</div>	
+        		</div>
+      		</div>
+      		<!-- /.modal-content -->
+    		</div>
+    		<!-- /.modal-dialog -->
+  		</div>
+  		<!-- /.modal -->
+
+    	<!-- Title Modal -->
+      <div class="modal titleModal fade" role="dialog">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <button type="button" class="close closeTitleModal" data-dismiss="modal" aria-hidden="true">&times;</button>
+              <h4 class="modal-title">Title</h4>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <input class="form-control titleInput" type="text" placeholder="">
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-default closeTitleModal" data-dismiss="modal">Close</button>
+              <button type="button" class="btn btn-primary" id="createAnItem">Create</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+			<div class="modal newItemAskedModal fade" role="dialog">
+				<div class="modal-dialog">
+					<div class="modal-content">
+						<div class="modal-header">
+							<button type="button" class="close closeModal" data-dismiss="modal" aria-hidden="true">&times;</button>
+							<h4 class="modal-title"></h4>
+						</div>
+						<div class="modal-body text-center">
+							<h4>You asked for a new item.</h4>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-primary newItemDone">Done</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<% include itemsToolbar %>
+    <%
+      var loadForgeJS = true;
+      var safeJS = true;
+      var keyVerifiedState = true;
+    %>
+		<% include scripts %>
+  </body>
+</html>

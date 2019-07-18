@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+		<meta charset="utf-8">
+		<title>BSafes - Organize and Secure Your Data</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <%
+      var fontawesomeV5 = true;
+    %>
+    <% include stylesheets %>
+    <% include commonHeader %>
+  </head>
+  <body>
+    <% include navBar %>
+		<span class="redirectURL hidden"><%=redirectURL%></span>
+    <div class="container">
+			<br>
+			<br>
+			<br>
+    	<div class="row">
+				<div class="col-xs-12 col-sm-offset-3 col-sm-6 text-center">
+					<h1><i class="blackText fa fa-2x fa-lock" aria-hidden="true"></i></h1>
+        </div>
+			</div>
+      <%if(typeof(isDemo)!== "undefined" && isDemo){%>
+      <div class="demoMember row">
+        <div class="col-xs-12 col-sm-offset-4 col-sm-4">
+          <p>Demo key: <span class="text-primary">never4!Get</span></p>
+        </div>
+      </div>
+      <%}%> 			
+			<div class="row keyForm">
+				<div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">	
+					<form class="form-horizontal">
+  					<fieldset>
+							<div class="row">
+								<div class="col-xs-12 col-sm-offset-3 col-sm-6">
+									<p><%=keyHint%></p>
+								</div>
+							</div>
+							<div class="row">
+								<div class="col-xs-offset-1 col-xs-10 col-sm-offset-3 col-sm-6">
+									<label for="enterKey" class="control-label">Enter Your Key</label>
+								</div>
+							</div>
+    					<div class="row form-group">
+      					<div class="col-xs-offset-1 col-xs-10 col-sm-offset-3 col-sm-6">
+									<div class="form-group">
+										<div class="input-group">	
+        							<input type="password" class="form-control" id="enterKey" placeholder="" value="never4!Get">
+											<span class="input-group-btn">
+												<a href="" class="btn btn-primary" id="enterDoneButton">GO</a>
+											</span>
+										</div>
+									</div>
+      					</div>
+    					</div>
+							<div class="row reEnterHint hidden">
+								<div class="col-xs-12 col-sm-offset-3 col-sm-6">
+									<p class="redText">You entered a wrong key, please re-enter your key again. </p>
+								</div>
+							</div>
+    					<div class="row form-group">
+      					<div class="col-xs-offset-1 col-xs-10 col-sm-offset-3 col-sm-6">
+									<a href="#" col-xs-offset-1 col-xs-10 class="" id="forgotKey">Forgot key?</a>
+      					</div>
+    					</div>
+							<div class="modal fade" id="forgotKeyModal">
+  							<div class="modal-dialog">
+   								 <div class="modal-content">
+      							<div class="modal-header">
+        							<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        							<h4 class="modal-title">Forgot key?</h4>
+      							</div>
+      							<div class="modal-body">
+        							<p>You could create a new site for future data. After that, you could still access your data in old site when you recall your key.</p>
+      							</div>
+      							<div class="modal-footer">
+        							<button type="button" class="btn btn-primary" id="createANewSite">Create a new site</button>
+      							</div>
+    							</div>
+  							</div>
+							</div>
+  					</fieldset>
+					</form>
+				</div>
+			</div>
+		</div>
+    <% include navBarBottom %>
+		<%
+			var forgeJS = true;
+			var keyEnterJS = true;
+      var signedInState = true;
+    %>
+		<% include scripts %>
+  </body>
+</html>

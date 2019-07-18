@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+		<meta charset="utf-8">
+		<title>Managed Members</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <%
+      var fontawesomeV4 = true;
+    %>
+    <% include stylesheets %>
+    <% include commonHeader %>
+  </head>
+  <body class="">
+    <% include navBar %>
+    <div>
+			<div class="col-xs-10">
+	      <ul class="breadcrumb">
+  	      <li><a id="" href="#">Managed Members</a></li>
+    	  </ul>
+			</div>
+			<div class="col-xs-2">
+				<a href="#" class="btn btn-success pull-right" id="personalBtn">Personal</a>	
+			</div>
+    </div>
+    <div class="container">
+    	<div class="row listMode">
+       	<div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2 textAlignCenter">
+						<h1>Managed Members</h1>
+				</div>
+			</div>
+			<div class="row addingMode hidden">
+        <div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2 textAlignCenter">
+            <h1>Adding a Member</h1>
+        </div>
+      </div>
+			<br>
+      <div class="row listMode">
+        <div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2 text-center">
+        	<button class="btn btn-primary btn-circle" type="button" id="addAManagedMemberBtn"><i class="fa fa-plus fa-lg" aria-hidden="true"></i></button>
+				</div>
+      </div>
+      <br>
+			<div class="row newManagedMemberForm addingMode hidden">
+        <div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">
+          <form class="form-horizontal backgroundColorWhite">
+            <fieldset>
+							<br>
+              <div class="row form-group">
+                  <div class="col-xs-12 col-sm-offset-3 col-sm-6">
+                    <label for="memberName" class="control-label">Member Name</label>
+                    <input type="text" class="form-control" id="memberName" placeholder="">
+                  </div>
+              </div>
+              <div class="row">
+                <div class="col-xs-12 col-sm-offset-3 col-sm-6">
+                  <h6>Use at least 8 characters for password and key. Also, mix upper and lower case letters, numbers and symbols(!@#$%^&*).</h6>
+                </div>
+              </div>
+							<div class="row form-group">
+                  <div class="col-xs-12 col-sm-offset-3 col-sm-6">
+                    <label for="password" class="control-label">Password</label>
+                    <input type="password" class="form-control" id="password" placeholder="">
+                  </div>
+              </div>
+							<div class="row">
+                <div class="col-xs-12 col-sm-offset-3 col-sm-6">
+                  <div class="progress marginTopBottom0Px hidden" id="passwordStrengthProgress">
+                    <div class="progress-bar progress-bar-danger width0Percent" id="passwordStrengthProgressBar"></div>
+                  </div>
+                </div>
+              </div>
+							<div class="row">
+                <div class="col-xs-12 col-sm-offset-3 col-sm-6">
+                  <p class="text-danger marginTopBottom0Px hidden" id="passwordStrengthText"><small>Strength</small></p>
+                </div>
+              </div>
+							<div class="row form-group">
+                  <div class="col-xs-12 col-sm-offset-3 col-sm-6">
+                    <label for="confirmPassword" class="control-label">Confirm Password</label>
+                    <input type="password" class="form-control" id="confirmPassword" placeholder="">
+                  </div>
+              </div>
+							<div class="row">
+                <div class="col-xs-12 col-sm-offset-3 col-sm-6">
+                  <p class="text-success marginTopBottom0Px" id="confirmPasswordText"><small></small></p>
+                </div>
+              </div>
+              <div class="row form-group">
+                  <div class="col-xs-12 col-sm-offset-3 col-sm-6">
+                    <a href="" class="btn btn-primary pull-right disabled" id="doneAddingBtn">Done</a>
+										<a href="" class="btn btn-default pull-right" id="CancelAddingBtn">Cancel</a>
+                  </div>
+              </div>
+            </fieldset>
+          </form>
+        </div>
+      </div>
+			<div class="results listMode">
+				<div class="resultItems">
+				</div>
+				<div class="row">
+          <div class="col-xs-10 col-xs-offset-1">
+            <div class="textAlignCenter">
+              <ul class="containerContentsPagination pagination pagination-sm hidden">
+              </ul>
+            </div>
+          </div>
+        </div>
+				<div class="resultItemTemplate row hidden">
+					<div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">
+						<div class="resultItemPanel panel panel-default">
+							<div class="paddingTopBottom0Px panel-body">
+								<div class="row">
+									<div class="col-xs-9 col-xs-offset-0 marginTop7Px">	
+										<h5 class="displayName">Hello World</h4>
+									</div>
+									<div class="col-xs-3">
+										<div class="btn-group pull-right">
+											<button class="itemControl actionsBtn dropdown-toggle btn btn-link btn-xs marginTop7Px" data-toggle="dropdown" type="button"><i class="fa fa-ellipsis-v" aria-hidden="true"></i></button>
+                    	<ul class="dropdown-menu">
+												<li><a class="actionOption deleteAManagedMember" href="#">Delete</a></li>
+                    	</ul>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<br>
+			<!-- Delete Modal -->
+      <div class="modal fade" id="deleteModal" role="dialog">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <button type="button" class="close closeDeleteModal" data-dismiss="modal" aria-hidden="true">&times;</button>
+              <h4 class="modal-title">Are your sure?</h4>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <input class="form-control" id="deleteInput" type="text" placeholder="Yes" value="No">
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-default closeDeleteModal" data-dismiss="modal">Close</button>
+              <button type="button" class="btn btn-primary" id="goDeleteBtn">Go</button>
+            </div>
+          </div>
+        </div>
+      </div>
+		</div>
+    <%
+      var loadForgeJS = true;
+      var managedMembersJS = true;
+      var keyVerifiedState = true;
+    %>
+		<% include scripts %>
+  </body>
+</html>

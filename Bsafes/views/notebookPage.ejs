@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+		<meta charset="utf-8">
+		<title>BSafes - Organize and Secure Your Data</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <%
+      var fontawesomeV4 = true;
+      var editableCSS = true;
+    %>
+    <% include stylesheets %>
+    <% include commonHeader %>
+  </head>
+  <body class="bSafesBody">
+		<span class='hidden' id='itemId'><%=itemId%></span>
+    <% include navBar %>
+		<% include pathRow %>
+
+    <div class="container">
+			<div class="row">
+        <div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-lg-8 col-lg-offset-2">
+					<div class="containerControlsPanel panel panel-default">
+  					<div class="panel-body notebookControlsPanelBody">
+          		<div class="row">
+            		<div class="col-xs-4">
+									<button class="containerControlsBtn btn btn-link btn-xs pageNavigationPart" type="button" id="gotoCoverBtn"><i class="fa fa-book" aria-hidden="true"></i></button>
+              		<button class="containerControlsBtn btn btn-link btn-xs pageNavigationPart" type="button" id="gotoContentsBtn"><i class="fa fa-list-ul" aria-hidden="true"></i></button>
+            		</div>
+            		<div class="col-xs-8">
+              		<div class="input-group pageNumberNavigation pageNavigation pull-right">
+                		<input type="text" class="form-control pageNavigationPart" id="pageNumberInput">
+                		<button class="btn btn-link btn-xs pageNavigationPart" type="button" id="gotoPageBtn"><i class="fa fa-arrow-right" aria-hidden="true"></i>&nbsp</button>
+										<button class="btn btn-link btn-xs pageNavigationPart" type="button" id="gotoFirstItemBtn">&nbsp<i class="fa fa-step-backward" aria-hidden="true"></i>&nbsp</button>
+										<button class="btn btn-link btn-xs pageNavigationPart" type="button" id="gotoLastItemBtn">&nbsp<i class="fa fa-step-forward" aria-hidden="true"></i></button>
+              		</div>
+            		</div>
+            		<div class="col-xs-1 col-sm-3">
+            		</div>
+          		</div>
+  					</div>
+					</div>
+				</div>
+			</div>	
+
+			<div class="pagePanel notebookPanel notebookPagePanel">
+				<% include itemTopRows %>
+        <div class="row pageRow">
+          <div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">
+            <hr>
+          </div>
+        </div>
+				<% include pageCommons %>
+			</div>
+		</div>
+		<% include turningPageRow %>
+		<% include pageCommonControls  %>
+    <% include navBarBottom %>
+    <%
+      var loadForgeJS = true;
+      var tagsJS = true;
+      var notebookPageJS = true;
+			var pageControlJS = true;
+      var editorJS = true;
+      var keyVerifiedState = true;
+    %>
+    <% include scripts %>
+  </body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Teams</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+		<%
+			var fontawesomeV4 = true;
+		%>
+		<% include stylesheets %>
+		<% include commonHeader %>
+	</head>
+	<body class="">
+		<% include navBar %>
+		<div>
+			<div class="col-xs-10">
+				<ul class="breadcrumb">
+					<li><a id="teamName" href="#">Teams</a></li>
+				</ul>
+			</div>
+			<div class="col-xs-2">
+			</div>
+		</div>
+		<div class="container">
+			
+			<br>
+			<div class="results">
+				<div class="resultItems">
+				</div>
+				<div class="row">
+					<div class="col-xs-10 col-xs-offset-1">
+						<div class="textAlignCenter">
+							<ul class="containerContentsPagination pagination pagination-sm hidden">
+							</ul>
+						</div>
+					</div>
+				</div>
+				<div class="resultItemTemplate row hidden">
+					<div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">
+						<div class="resultItemPanel panel panel-default">
+							<div class="resultItemPanelBody panel-body">
+								<div class="row">
+									<div class="col-xs-9 col-xs-offset-0 marginTop7Px">	
+										<a class="itemTitle blackText fontSize130Percent" href="#">Hello World</a>
+									</div>
+									<div class="col-xs-3">
+										<div class="btn-group pull-right">
+											<button class="itemControl deleteItemBtn btn btn-link btn-xs marginTop7Px" type="button"><i class="fa fa-times" aria-hidden="true"></i></button>
+										</div>
+										
+									</div>
+								</div>
+								<div class="row col-xs-3 pull-right itemStatus">
+								status
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<br>
+			<!-- Title Modal -->
+			<div class="modal fade" id="nameModal" role="dialog">
+				<div class="modal-dialog">
+					<div class="modal-content">
+						<div class="modal-header">
+							<button type="button" class="close closeNameModal" data-dismiss="modal" aria-hidden="true">&times;</button>
+							<h4 class="modal-title">Name</h4>
+						</div>
+						<div class="modal-body">
+							<div class="form-group">
+								<input class="form-control nameInput" type="text" placeholder="">
+							</div>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-default closeNameModal" data-dismiss="modal">Close</button>
+							<button type="button" class="btn btn-primary" id="createATeam">Create</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<% include navBarBottom %>
+		<% include logControls %>
+		
+		<%
+			var loadForgeJS = true;
+			var teamsJS = true;
+			//var keyVerifiedState = true;
+		%>
+		<% include scripts %>
+		
+	</body>
+</html>

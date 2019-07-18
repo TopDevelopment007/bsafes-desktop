@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+		<meta charset="utf-8">
+		<title>Team</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <%
+      var fontawesomeV4 = true;
+    %>
+    <% include stylesheets %>
+    <% include commonHeader %>
+  </head>
+  <body class="">
+		<span class='hidden' id='teamId'><%=teamId%></span>
+    <% include navBar %>
+    <div>
+			<div class="col-xs-10">
+	      <ul class="breadcrumb">
+  	      <li><a class="teamName" href="/team/<%=teamId%>">Home</a></li>
+    	  </ul>
+			</div>
+    </div>
+    <div class="container">
+    	<div class="row listMode">
+       	<div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2 text-center">
+						<h2 class="">Members</h2>
+				</div>
+			</div>
+
+			<div class="row addingMode hidden">
+        <div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2 text-center">
+            <h2 class="">Adding members</h2>
+        </div>
+      </div>
+
+      <div class="row listMode">
+        <div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2 text-center">
+        	<button class="btn btn-primary btn-circle" id="addAMemberBtn"><i class="fa fa-plus fa-lg" aria-hidden="true"></i></button>
+				</div>
+      </div>
+			<div class="row addingMode hidden">
+        <div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2 text-center">
+          <button class="btn btn-default btn-circle" id="cancelAddingAMemberBtn"><i class="fa fa-times fa-lg" aria-hidden="true"></i></button>
+        </div>
+      </div>
+      <br>
+			<div class="addingATeamMember addingMode hidden">
+				<div class="row">
+					<div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">
+						<div class="form-group">
+              <div class="input-group">
+                <input type="text" class="form-control input-lg" id="findAMemberInput" placeholder="">
+                <span class="input-group-btn">
+                	<button class="btn btn-link" type="button" id="findAMemberBtn"><i class="fa fa-search" aria-hidden="true"></i></button>
+                </span>
+              </div>
+            </div>
+					</div>
+				</div>
+				<div class="row">
+          <div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">
+						<div class="findAMemberResults minHeight120Px">
+						
+						</div>
+						<div class="findResultTemplate hidden well well-sm">
+              <div class="row">
+                <div class="col-xs-10">
+                  <h5 class="displayName"></h5>
+                  <p class="email"></p>
+                </div>
+                <div class="col-xs-2">
+                  <a href="#" class="addAMemberBtn btn btn-link"><i class="fa fa-plus" aria-hidden="true"></i></a>
+                </div>
+              </div>
+            </div>
+					</div>
+        </div>
+				<div class="selectManagedMembers">
+					<div class="row">
+          	<div class="col-xs-8 col-xs-offset-0 col-sm-6 col-sm-offset-1 col-md-6 col-md-offset-2">
+							<h4>Select members</h4>
+						</div>
+            <div class="col-xs-4 col-sm-4 col-md-2">
+							<a href="#" id="addManagedMembersBtn" class="btn btn-sm btn-primary pull-right disabled">Add</a>
+            </div>
+					</div>
+					<div class="managedMembers">
+					</div>	
+					<div class="managedMemberTemplate row hidden">
+          	<div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">
+            	<div class="resultItemPanel panel panel-default">
+              	<div class="resultItemPanelBody panel-body paddingTopBottom0Px">
+                	<div class="row">
+                  	<div class="col-xs-9 col-xs-offset-0 marginTop7Px">
+                    	<h4 class="itemTitle">Hello World</h4>
+                  	</div>
+                  	<div class="col-xs-3">
+                    	<div class="checkbox pull-right">
+                        <input type="checkbox" class="itemControl managedMemberSelectBox">
+                    	</div>	
+                  	</div>
+               		</div>
+              	</div>
+            	</div>
+          	</div>
+        	</div>
+				</div>
+			</div>
+			     
+			<div class="results listMode">
+				<div class="resultMembers">
+				</div>
+				<div class="row">
+          <div class="col-xs-10 col-xs-offset-1">
+            <div class="textAlignCenter">
+              <ul class="membersPagination pagination pagination-sm hidden">
+              </ul>
+            </div>
+          </div>
+        </div>
+				<div class="memberResultTemplate row hidden">
+					<div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">
+            <div class="resultItemPanel panel panel-default">
+              <div class="resultItemPanelBody panel-body paddingTopBottom0Px">
+                <div class="row">
+                  <div class="col-xs-9 col-xs-offset-0 marginTop7Px">
+										<h5 class="displayName"></h5>
+              			<p class="email"></p>
+                  </div>
+                  <div class="col-xs-3">
+                    <div class="btn-group pull-right">
+                      <button class="itemControl actionsBtn dropdown-toggle btn btn-link btn-xs marginTop7Px" data-toggle="dropdown" type="button"><i class="fa fa-ellipsis-v" aria-hidden="true"></i></button>
+                      <ul class="dropdown-menu">
+                        <li><a class="actionOption deleteATeamMember" href="#">Delete</a></li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+			</div>
+			<br>
+		  <!-- Delete Modal -->
+      <div class="modal fade" id="deleteModal" role="dialog">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <button type="button" class="close closeDeleteModal" data-dismiss="modal" aria-hidden="true">&times;</button>
+              <h4 class="modal-title">Are your sure?</h4>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <input class="form-control" id="deleteInput" type="text" placeholder="Yes" value="No">
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-default closeDeleteModal" data-dismiss="modal">Close</button>
+              <button type="button" class="btn btn-primary" id="goDeleteBtn">Go</button>
+            </div>
+          </div>
+        </div>
+      </div>
+		</div>
+    <%
+      var loadForgeJS = true;
+      var teamMembersJS = true;
+      var keyVerifiedState = true;
+    %>
+    <% include scripts %>
+  </body>
+</html>

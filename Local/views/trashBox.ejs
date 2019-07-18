@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+		<meta charset="utf-8">
+		<title>BSafes - Organize and Secure Your Data</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <%
+      var fontawesomeV4 = true;
+      var editableCSS = true;
+    %>
+    <% include stylesheets %>
+    <% include commonHeader %>
+  </head>
+  <body class="bSafesBody">
+		<span class='hidden' id='teamSpace'><%=teamSpace%></span>
+		<span class='hidden' id='trashBoxId'><%=trashBoxId%></span>
+    <% include navBar %>
+		<% include pathRow %>
+
+    <div class="container">
+			<div class="pagePanel boxPanel boxContentsPanel containerContentsPanel">
+				<br>
+				<h2 class="text-center">Trash</h2>
+				<div class="actionsRow">
+					<div class="row actionsOnAllRow">
+						<div class="col-xs-offset-1 col-xs-10">
+							<div class="pull-right">
+								<a href="#" id="restoreAll">Restore all</a>&nbsp&nbsp&nbsp<a href="#" class="redText" id="emptyAll">Empty all</a>
+							</div>
+						</div>
+					</div>
+					<div class="row actionsOnSelectedRow hidden">
+          	<div class="col-xs-offset-1 col-xs-10">
+            	<div class="pull-right">
+              	<a href="#" id="restoreSelected">Restore</a>&nbsp&nbsp&nbsp<a href="#" class="redText" id="emptySelected">Empty</a>
+            	</div>
+          	</div>
+        	</div>
+				</div>
+				<br>
+      	<div class="searchResults">
+        	<div class="resultItems">
+        	</div>
+        	<div class="resultItemTemplate row hidden">
+          	<div class="col-xs-7 col-xs-offset-1">
+								<a href="#" class="itemLink blackText">
+              		<div class="">
+                		<p class="containerContentsPageTitle itemTitle blackText" id="titleLink">Hello World</p>
+              		</div>
+								</a>
+          	</div>
+          	<div class="col-xs-3">
+					    <div class="checkbox pull-right marginTopBottom0Px">
+                <input type="checkbox" class="itemControl selectItemBox">
+              </div>
+          	</div>
+						<div class="col-xs-10 col-xs-offset-1">
+							<hr class="marginTopBottom0Px">
+						</div>
+        	</div>
+      	</div>
+				<div class="row">
+					<div class="col-xs-10 col-xs-offset-1">
+						<div class="textAlignCenter">
+							<ul class="containerContentsPagination pagination pagination-sm hidden">
+							</ul>							
+						</div>
+					</div>
+				</div>				
+			</div>
+			<br>
+		</div>
+    <%
+      var loadForgeJS = true;
+      var tagsJS = true;
+      var trashBoxJS = true;
+      var keyVerifiedState = true;
+    %>
+    <% include scripts %>
+  </body>
+</html>

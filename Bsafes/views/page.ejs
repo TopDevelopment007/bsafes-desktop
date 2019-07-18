@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+		<meta charset="utf-8">
+		<title>BSafes - Organize and Secure Your Data</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <%
+      var fontawesomeV4 = true;
+			var editableCSS = true;
+    %>
+    <% include stylesheets %>
+    <% include commonHeader %>
+  </head>
+  <body class="bSafesBody">
+		<span class='hidden' id='itemId'><%=itemId%></span>
+    <% include navBar %>
+		<% include pathRow %>
+
+    <div class="container">
+			<% include boxControlsPanel %>
+			<div class="pagePanel">
+				<br>
+				<% include itemTopRows %>
+        <div class="row pageRow">
+          <div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">
+            <hr>
+          </div>
+        </div>
+				<% include pageCommons %>
+			</div>
+		</div>
+		<% include itemNavigation %>
+		<% include pageCommonControls  %>
+		<% include itemBottomToolbar %>
+    <% include navBarBottom %>
+    <%
+      var loadForgeJS = true;
+      var tagsJS = true;
+			var pageJS = true;
+			var pageControlJS = true;
+			var editorJS = true;
+      var keyVerifiedState = true;
+    %>
+    <% include scripts %>		
+  </body>
+</html>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+		<meta charset="utf-8">
+		<title>BSafes - Organize and Secure Your Data</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <%
+      var fontawesomeV4 = true;
+    %>
+    <% include stylesheets %>
+		<% include commonHeader %>
+  </head>
+  <body>
+    <% include navBar %>
+    <div class="container">
+    	<div class="keySetup">
+    		<div class="row">
+       		<div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2 text-center">
+						<h1><i class="blackText fa fa-2x fa-key" aria-hidden="true"></i></h1>
+					</div>
+				</div>
+				<div class="row">
+          <div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2 text-center">
+            <h1><%=keyVersion%></h1>
+          </div>
+        </div>
+				<div class="row keyInfo">
+					<div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">
+						<div class="alert alert-dismissible alert-warning">
+  						<h4>Please Set Up Your Key</h4>
+							<p>To maximize your data protection, you would own your key to encrypt and decrypt data. Your key would never be sent to server. If you loss your key, you can't see your data and we could not recover it!</p>
+						</div>
+					</div>
+				</div>
+				<div class="row keySetupForm">
+				<div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">	
+					<form class="form-horizontal">
+  					<fieldset>
+    					<div class="row form-group">
+      						<div class="col-xs-12 col-sm-offset-3 col-sm-6">
+										<label for="createKey" class="control-label">Create Your Key</label>
+        						<input type="password" class="form-control" id="createKey" placeholder="">
+      						</div>
+    					</div>
+							<div class="row">
+              	<div class="col-xs-12 col-sm-offset-3 col-sm-6">
+									<div class="progress hidden marginTopBottom0Px">
+  									<div class="progress-bar progress-bar-danger width0Percent" id="strengthProgress"></div>
+									</div>
+								</div>
+              </div>
+							<div class="row">
+								<div class="col-xs-12 col-sm-offset-3 col-sm-6">
+									<p class="text-danger marginTopBottom0Px hidden" id="strengthText"><small>Strength</small></p>
+									<h6>Use at least 8 characters. Also, mix upper and lower case letters, numbers and symbols(!@#$%^&*).</h6>
+								</div>
+							</div>
+    					<div class="row form-group">
+      						<div class="col-xs-12 col-sm-offset-3 col-sm-6">
+										<label for="confirmKey" class="control-label">Confirm Your Key</label>
+        						<input type="password" class="form-control" id="confirmKey" placeholder="">
+      						</div>
+    					</div>
+							<div class="row">
+                <div class="col-xs-12 col-sm-offset-3 col-sm-6">
+                  <p class="text-success marginTopBottom0Px" id="confirmText"><small></small></p>
+                </div>
+              </div>
+    					<div class="row form-group">
+      						<div class="col-xs-12 col-sm-offset-3 col-sm-6">
+										<label for="inputHint" class="control-label">Create Your Hint(Optional)</label>
+        						<input type="text" class="form-control" id="inputHint" placeholder="">
+      						</div>
+    					</div>
+    					<div class="row form-group">
+      						<div class="col-xs-12 col-sm-offset-3 col-sm-6">
+										<a href="" class="btn btn-primary pull-right disabled" id="setupDoneButton">Done</a>
+      						</div>
+    					</div>
+  					</fieldset>
+					</form>
+				</div>
+				<div class="modal" id="keyReminderModal">
+  				<div class="modal-dialog">
+    				<div class="modal-content">
+      				<div class="modal-header">
+        				<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        				<h4 class="modal-title">Remember Your Key</h4>
+      				</div>
+      				<div class="modal-body">
+        				<p>Your Key is critical, please remember it. If you could not remember it, please write it down and lock it in a physical safe place. And you should not let anyone else know.</p>
+								<p>You would be asked again to enter your key to start using BSafes services. If you don't feel confident, please re-create your key.</p>
+      				</div>
+      				<div class="modal-footer">
+        				<button type="button" class="btn btn-primary" data-dismiss="modal">Ok</button>
+      				</div>
+    				</div>
+  				</div>
+				</div>
+			</div>
+			</div>
+			<div class="keyEnter hidden">
+    		<div class="row">
+       	<div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">
+						<h2>Welcome to BSafes</h2>
+						<p><span"><em><%=bSafesTagLine%></em></span></p>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">
+					<div class="alert alert-dismissible alert-warning">
+  					<h4>Please Enter Your Key</h4>
+						<p>You own your key to encrypt and decrypt data. If you loss your key, you can't see your data and we could not recover it!</p>
+					</div>
+				</div>
+			</div>
+			<div class="row enterYourKeyRow">
+				<div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">	
+					<form class="form-horizontal">
+  					<fieldset>
+    					<div class="row form-group">
+      						<div class="col-xs-12 col-sm-offset-3 col-sm-6">
+										<label for="enterKey" class="control-label">Enter Your Key</label>
+        						<input type="password" class="form-control" id="enterKey" placeholder="">
+      						</div>
+    					</div>
+							<div class="row reCreateHint hidden">
+									<div class="col-xs-12 col-sm-offset-3 col-sm-6">
+										<p class="redText">Wrong key, please re-enter or re-create key</p>
+									</div>
+							</div>
+    					<div class="row form-group">
+      						<div class="col-xs-12 col-sm-offset-3 col-sm-6">
+										<a href="" class="btn btn-primary pull-right" id="enterDoneButton">Done</a>
+      						</div>
+    					</div>
+							<div class="row form-group">
+                  <div class="col-xs-12 col-sm-offset-3 col-sm-6">
+                    <a href="" class="btn btn-warning btn-xs pull-right hidden reCreateHint" id="reCreateKeyButton">Re-Create Key</a>
+                  </div>
+              </div>
+  					</fieldset>
+					</form>
+				</div>
+			</div>				
+			</div>
+		</div>
+    <%
+      var loadForgeJS = true;
+      var keySetupJS = true;
+      var signedInState = true;
+    %>
+    <% include scripts %>
+  </body>
+</html>

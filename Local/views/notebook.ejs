@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+		<meta charset="utf-8">
+		<title>BSafes - Organize and Secure Your Data</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <%
+      var fontawesomeV4 = true;
+      var editableCSS = true;
+    %>
+    <% include stylesheets %>
+    <% include commonHeader %>
+  </head>
+  <body class="bSafesBody">
+		<span class='hidden' id='itemId'><%=itemId%></span>
+		<span class='hidden' id='initialDisplay'><%=initialDisplay%></span>
+    <% include navBar %>
+		<% include pathRow %>
+
+    <div class="container">
+			<% include boxControlsPanel %>
+      <div class="row">
+        <div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-lg-8 col-lg-offset-2">
+          <div class="contentsControlsPanel containerControlsPanel panel panel-default">
+            <div class="panel-body notebookControlsPanelBody">
+              <div class="row">
+                <div class="col-xs-4 col-xs-offset-0">
+                  <button class="containerControlsBtn btn btn-link btn-xs pageNavigationPart" type="button" id="gotoCoverBtn"><i class="fa fa-book" aria-hidden="true"></i></button>
+									<button class="containerControlsBtn btn btn-link btn-xs pageNavigationPart hidden" type="button" id="gotoContentsBtn"><i class="fa fa-list-ul" aria-hidden="true"></i></button>
+                </div>
+								
+                <div class="col-xs-8">
+                  <div class="input-group pageNumberNavigation pageNavigation pull-right">
+                    <input type="text" class="form-control pageNavigationPart" id="pageNumberInput">
+                    <button class="btn btn-link btn-xs pageNavigationPart" type="button" id="gotoPageBtn"><i class="fa fa-arrow-right" aria-hidden="true"></i>&nbsp</button>
+										<button class="btn btn-link btn-xs pageNavigationPart" type="button" id="gotoLastItemBtn">&nbsp<i class="fa fa-step-forward" aria-hidden="true"></i>&nbsp</button>
+										<button class="containerControlsBtn btn btn-link btn-xs pageNavigationPart" type="button" id="showSearchInputBtn">&nbsp<i class="fa fa-search" aria-hidden="true"></i></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="containerSearchRow row hidden">
+        <div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-lg-8 col-lg-offset-2">
+          <div class="panel panel-default">
+            <div class="panel-body">
+              <div class="row">
+                <div class="col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">
+                  <div class="form-group">
+                    <div class="input-group">
+                      <input type="text" class="form-control input-lg" id="searchInput">
+                      <span class="input-group-btn">
+                        <button class="btn btn-link" type="button" id="searchBtn"><i class="fa fa-search" aria-hidden="true"></i></button>
+												<button class="btn btn-link" type="button" id="cancelSearchBtn"><i class="fa fa-times" aria-hidden="true"></i></button>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>     
+
+      <div class="notebookPanel notebookCoverPanel containerCoverPanel containerPanel hidden">
+        <br>
+				<% include itemTopRows %>
+        <br>
+        <br>
+        <br>
+        <div class="row pageRow titleRow marginTop0Px">
+          <div class="containerTitleLabel col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">
+            <p>
+            	<a href="#" class="btnEditor btnWrite btn btn-link btn-xs pull-right" id="title" aria-label="Write"><i class="sceneControl fa fa-pencil" aria-hidden="true" id="title"></i></a>
+            </p>
+          	<div class="froala-editor containerTitle" id="title">
+       			</div>
+        	</div>
+        </div>
+				<%include containerOpenBtn%>
+      </div>
+
+			<div class="pagePanel notebookPanel notebookContentsPanel containerContentsPanel hidden">
+				<br>
+				<h2 class="textAlignCenter">Contents</h2>
+
+        <div class="row hidden">
+          <div class="col-xs-12 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2 text-center">
+            <div class="marginBottom10Px">
+              <ul class="listOptionsTab nav nav-tabs text-center">
+                <li id="listAllItems"><a href="#">All</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-xs-2 col-xs-offset-1 col-sm-2 col-sm-offset-1 col-md-1 col-md-offset-1">
+           	Page 
+          </div> 
+          <div class="col-xs-8 col-xs-offset-0 col-sm-8 col-md-9">
+            <div class="">
+              <div class="">
+              	Title 
+              </div>
+            </div>
+          </div>
+        </div>
+
+      	<div class="searchResults">
+        	<div class="resultItems">
+        	</div>
+        	<div class="resultItemTemplate row hidden">
+						<div class="col-xs-2 col-xs-offset-1 col-sm-2 col-sm-offset-1 col-md-1 col-md-offset-1">
+							<a class= "containerContentsPageTitle itemPage" id="pageNumberLink" href="#">Hello World</a>	
+						</div> 
+          	<div class="col-xs-8 col-xs-offset-0 col-sm-8 col-md-9">
+							<a href="#" class="itemLink blackText">
+								<p class="containerContentsPageTitle itemTitle" id="titleLink" >Hello World</p>
+							</a>
+          	</div>
+						<div class="col-xs-10 col-xs-offset-1">
+							<hr class="marginTopBottom0Px">
+						</div>
+        	</div>
+      	</div>
+				<div class="row">
+					<div class="col-xs-10 col-xs-offset-1">
+						<div class="textAlignCenter">
+							<ul class="containerContentsPagination pagination pagination-sm hidden">
+							</ul>							
+						</div>
+					</div>
+				</div>				
+			</div>
+		</div>
+		<% include turningPageRow %>
+    <div class="btnEditor btn btnFloatingSave btnFloating btnSave hidden"><i class="fa fa-check fa-2x" aria-hidden="true"></i></div>
+    <div class="btnEditor btn btnFloatingCancel btnFloating btnCancel hidden"><i class="fa fa-times fa-2x" aria-hidden="true"></i></div>
+    <% include navBarBottom %>
+    <%
+      var loadForgeJS = true;
+      var tagsJS = true;
+      var containerJS = true;
+      var editorJS = true;
+      var keyVerifiedState = true;
+    %>
+    <% include scripts %>
+  </body>
+</html>
