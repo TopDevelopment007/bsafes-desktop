@@ -102,3 +102,11 @@ function loadPage() {
     });
 }
 ;
+
+function handleVideoObjects() {
+    var videoDownloads = $('.bSafesDownloadVideo');
+    $('.bSafesDownloadVideo').on('click', function() {
+        downloadVideoObject($(this));
+    });
+}
+

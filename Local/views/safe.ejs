@@ -13,6 +13,7 @@
   </head>
   <body class="">
 		<span class='hidden' id='teamId'><%=teamId%></span>
+    <p class='loginUserId hidden'><%=loginUserId%></p>
     <% include navBar %>
 		<div class="row margin0Px">
 			<div class="col-xs-9 paddingLeft0Px">
@@ -199,6 +200,7 @@
 			</div>
 		</div>
 		<% include itemsToolbar %>
+    <% include navBarBottom %>
     <%
       var loadForgeJS = true;
       var safeJS = true;

@@ -518,7 +518,8 @@ function loadPage(){
   });
 
   $(".btnDownload").click(function(e) {
-    $(e.target).trigger('blur');
+    //$(e.target).trigger('blur');
+    e.preventDefault();
     downloadSelectedItems(selectedItemList);
     showLoadingIn($('#addATeamBtn'));
     return false;

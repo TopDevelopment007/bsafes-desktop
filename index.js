@@ -6,14 +6,18 @@ const ejse = require('ejs-electron')
 var sqlite3 = require('sqlite3').verbose();
 var databaseFile = 'BSafes.db';
 var db = null;
+var loginUserId;
 var arrDownloadQueue = [];
-var threads = require('./thread.js');
+//var threads = require('./thread.js');
+var download_folder_path = 'bsafes_downloads/';
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
-let win
+let win;
+let thread_win;
 
 global.sqliteDB = db;
+global.loginUserId = loginUserId;
 
 function createWindow () {
   // Create the browser window.
@@ -26,23 +30,26 @@ function createWindow () {
     }
   })
 
-  ejse.data('masterId', 'F_hRPgswTh1se8DuWy6762ojHUWOvn6dch4KIvaIo4flg=')
-  ejse.data('displayMasterId', '2339894959580958')
-  //ejse.data('isDemo', true)
+  //ejse.data('masterId', 'F_hRPgswTh1se8DuWy6762ojHUWOvn6dch4KIvaIo4flg=')
+  //ejse.data('displayMasterId', '2339894959580958')
 
   // and load the index.html of the app.
   win.loadURL(url.format({
     pathname: path.join(__dirname, 'Bsafes/views/managedMemberSignIn.ejs'),
+    //pathname: path.join(__dirname, 'Bsafes/views/index.ejs'),
     protocol: 'file:',
     slashes: true
   }))
-  //win.loadURL("views/managedMemberSignIn.ejs")
-  //win.loadURL("views/Local.html")
 
-  //win.setMenu(null);
-  // Open the DevTools.
-  win.webContents.openDevTools()
+  
 
+  // clear cache.
+  let session = win.webContents.session;
+  // session.cookies.get({ url : 'https://www.openbsafes.com' }, function(error, cookies) {
+  //     console.log(cookies);
+  // });
+  session.cookies.remove('https://www.openbsafes.com', 'connect.sid', function(data) {});
+  
   // Emitted when the window is closed.
   win.on('closed', () => {
     // Dereference the window object, usually you would store windows
@@ -50,6 +57,25 @@ function createWindow () {
     // when you should delete the corresponding element.
     win = null
   })
+
+  var thread_win = new BrowserWindow({ parent: win })
+  thread_win.loadURL(url.format({
+    pathname: path.join(__dirname, 'thread.ejs'),
+    protocol: 'file:',
+    slashes: true
+  }))
+  thread_win.webContents.openDevTools();
+  
+
+  var isDev = true;
+  //var isDev = false;
+  if (isDev) {    
+    // Open the DevTools.
+    win.webContents.openDevTools();
+  } else {
+    win.setMenu(null);
+    thread_win.hide();
+  }
 }
 
 function initSQLiteDB()
@@ -89,11 +115,31 @@ function initSQLiteDB()
       db.run(sql);
 
       sql = "CREATE TABLE IF NOT EXISTS 'pages' (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, pageId TEXT, containerId TEXT, teamId TEXT, isDownload INTEGER); ";
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, pageId TEXT, containerId TEXT, teamId TEXT, " + 
+                " counterContentsImages INTEGER DEFAULT -1, downloadedContentsImages INTEGER DEFAULT 0, " + 
+                " counterVideos INTEGER DEFAULT -1, downloadedVideos INTEGER DEFAULT 0, " +
+                " counterImages INTEGER DEFAULT -1, downloadedImages INTEGER DEFAULT 0, " + 
+                " counterAttatchments INTEGER DEFAULT -1, downloadedAttatchments INTEGER DEFAULT 0, isDownload INTEGER DEFAULT 0); ";
       db.run(sql);
 
       sql = "CREATE TABLE IF NOT EXISTS 'pageContents' (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, pageId TEXT, jsonData BLOB); ";
+      db.run(sql);
+
+      sql = "CREATE TABLE IF NOT EXISTS 'pageContentsFiles' (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, pageId TEXT, s3Key TEXT, file_name TEXT); ";
+      db.run(sql);
+
+      sql = "CREATE TABLE IF NOT EXISTS 'pageVideos' (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, pageId TEXT, s3Key TEXT, file_name TEXT, jsonData BLOB); ";
+      db.run(sql);
+
+      sql = "CREATE TABLE IF NOT EXISTS 'pageAttatchments' (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, pageId TEXT, chunkIndex TEXT, s3KeyPrefix TEXT, file_name TEXT, jsonData BLOB); ";
+      db.run(sql);
+
+      sql = "CREATE TABLE IF NOT EXISTS 'pageImages' (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, pageId TEXT, s3Key TEXT, file_name TEXT, jsonData BLOB); ";
       db.run(sql);
 
       sql = "CREATE TABLE IF NOT EXISTS 'itemPath' (" +
@@ -111,14 +157,24 @@ function initSQLiteDB()
     });
 
     //threads.downloadPages(db);
-    //threads.downloadPages(db, 'p:mF_hRPgswTh1se8DuWy6762ojHUWOvn6dch4KIvaIo4flg=-1558941669974:1:1559177877327');
+    //threads.downloadPages('p:mF_hRPgswTh1se8DuWy6762ojHUWOvn6dch4KIvaIo4flg=-1558941669974:1:1559177877327');
 
   })  
   
 }
 
+function initApp()
+{
+  
 
-initSQLiteDB();
+  if (!fs.existsSync(download_folder_path)){
+    fs.mkdirSync(download_folder_path);
+  }
+
+  initSQLiteDB();
+}
+
+initApp();
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
@@ -149,21 +205,6 @@ ipcMain.on('show-message', (event, msg) => {
     }
 
 })
-
-//import { spawn, Thread, Worker } from "threads"
-
-global.glbDownload = function(pageId){
-    //threads.downloadPages(db, pageId);
-}
-
-global.glbConnect = function(url, postData){
-    //threads.connectToServer(url, postData);
-}
-
-global.glbConnect = function(url, postData){
-    //threads.connectToServer(url, postData);
-}
-
-global.glbConnectWithKey = function(url, postData){
-    //threads.connectToServerWithKey(url, postData);
-}
+ipcMain.on( "setMyGlobalVariable", ( event, myGlobalVariableValue ) => {
+  global.loginUserId = myGlobalVariableValue;
+} );

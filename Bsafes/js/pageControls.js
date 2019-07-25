@@ -2337,7 +2337,7 @@ function downloadImageObject(encryptedImageElement) {
                 if (evt.lengthComputable) {
                     var percentComplete = evt.loaded / evt.total * 100;
 
-                    console.log(percentComplete);
+                    console.log('displayImage', percentComplete);
                     $(document.getElementById('progressBar' + id)).width(percentComplete + '%');
                 }
             }, false);
@@ -2396,7 +2396,7 @@ function downloadVideoObject($videoDownload) {
                 if (evt.lengthComputable) {
                     var percentComplete = evt.loaded / evt.total * 100;
 
-                    console.log(percentComplete);
+                    console.log('downloadVideoObject', percentComplete);
                     $(document.getElementById('progressBar' + id)).width(percentComplete + '%');
                 }
             }, false);

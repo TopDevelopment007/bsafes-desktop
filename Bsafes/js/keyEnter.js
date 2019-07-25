@@ -36,8 +36,6 @@
 				console.log(data);
 				hideV5LoadingIn($('.keyForm'));
 				if(data.status === 'ok') {
-					var remote = require ("electron").remote;
-      				remote.getGlobal("glbConnectWithKey")(server_addr + '/memberAPI/verifyKeyHash', { "keyHash": keyHash });
 					var sessionKey = data.sessionKey;
 					var sessionIV = data.sessionIV;
 	

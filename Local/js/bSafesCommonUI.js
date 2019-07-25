@@ -76,7 +76,8 @@
    		switch(pathItemType) {
      		case 'u':
        		pathItemIcon = 'Personal';
-       		pathItemLink = '/';
+       		//pathItemLink = '/';
+          pathItemLink = '/safe/';
        		break;
      		case 't':
 					teamName = DOMPurify.sanitize(teamName);

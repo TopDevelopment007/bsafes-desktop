@@ -103,8 +103,32 @@ function loadPage(){
 
   $('.btnDownload').click(function(e) {
     e.preventDefault();
+    showDownloadLoadingIn();
     downloadSelectedItems(selectedTeams);
     return false;
+  });
+
+  $('.selectItemBoxPerson').click(function(e) {
+
+    var remote = require ("electron").remote;
+    //var teamPosition = $(e.target).closest('.resultItem').data('position');
+    //var teamId = $(e.target).closest('.personalSpace').attr('id');
+    var teamPosition = 'person_position';
+    var teamId = 'u:' + remote.getGlobal('loginUserId');
+    var thisTeamName = 'Personal';
+    var team = {id:teamId, position:teamPosition, itemName:thisTeamName};
+
+    if(e.target.checked){
+      selectedTeams.push(team);
+    } else {
+      for(var i=0; i< selectedItemsInContainer.length; i++)
+      {
+        if(selectedTeams[i].id === itemId) break;
+      }
+      selectedTeams.splice(i, 1);
+    }
+    updateToolbar(selectedTeams);
+
   });
 
 /*** End of creating an team ***/

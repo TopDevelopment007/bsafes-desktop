@@ -1186,7 +1186,7 @@ function showDownloadItemsModal(thisSpace) {
 
   //showLoading();
   $('.modal-body').empty();
-  dbGetDownloadsItemsFromLogs(function(data) {
+  dbGetDownloadsItemsFromLogs({from : 0, size: 20}, function(data) {
     if(data.status === 'ok') {
       var hits = data.hits.hits;
 

@@ -167,6 +167,7 @@ function loadPage() {
 
     $('.btnDownload').click(function(e) {
         e.preventDefault();
+        showDownloadLoadingIn();
         downloadSelectedItems(selectedItemList);
         return false;
     });

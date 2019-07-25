@@ -70,6 +70,7 @@ function bSafesPreflight(fn) {
 			decipher.update(thisBuffer);
 			decipher.finish();
 			var expandedKey = decipher.output.data;
+			data.expandedKey = expandedKey;
 
 			var publicKey = localStorage.getItem("publicKey");
 			data.publicKey = publicKey;
@@ -79,8 +80,10 @@ function bSafesPreflight(fn) {
 			var encodedEnvelopeIV = localStorage.getItem("encodedEnvelopeIV");
 			data.encodedEnvelopeIV = encodedEnvelopeIV;
 			var envelopeIV = forge.util.decode64(encodedEnvelopeIV);
+			data.envelopeIV = envelopeIV;
 
 			var privateKey = decryptBinaryString(privateKeyEnvelope, expandedKey, envelopeIV);			
+			data.privateKey = privateKey;
 
 			var encodedSearchKeyEnvelope = localStorage.getItem("encodedSearchKeyEnvelope");
 			data.encodedSearchKeyEnvelope = encodedSearchKeyEnvelope;
@@ -88,8 +91,10 @@ function bSafesPreflight(fn) {
 			var encodedSearchKeyIV = localStorage.getItem("encodedSearchKeyIV");
 			data.encodedSearchKeyIV = encodedSearchKeyIV;
 			var searchKeyIV = forge.util.decode64(encodedSearchKeyIV);
+			data.searchKeyIV = searchKeyIV;
 
 			var searchKey = decryptBinaryString(searchKeyEnvelope, expandedKey, searchKeyIV);
+			data.searchKey = searchKey;
 			dbInsertInfo(server_addr + '/memberAPI/preflight', data);
 
 			fn(null, expandedKey, publicKey, privateKey, searchKey);

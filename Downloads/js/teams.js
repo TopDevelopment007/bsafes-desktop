@@ -117,6 +117,7 @@ function loadPage(){
     return false;
   });
 
+
 /*** End of creating an team ***/
 
   var handleAddAction = function(e) {
@@ -226,8 +227,10 @@ function loadPage(){
       	$resultItem.attr('id', teamId);
 				$resultItem.data('position', teamPosition);
 				thisTeamName = DOMPurify.sanitize(thisTeamName);
+        thisType = checkItemType(teamId);
       	$resultItem.find('.itemTitle').html(thisTeamName);
         $resultItem.find('.itemStatus').html(teamStatus);
+        //$resultItem.find('.itemType').html(thisType);
       	var link = '/team/' + teamId;
 
       	//$resultItem.find('.itemTitle').attr('href', makeCallNavigate(link));
@@ -324,7 +327,7 @@ function loadPage(){
 		showLoading();
 		$('.resultItems').empty();
 
-		dbGetDownloadsItemsFromLogs(function(data) {
+		dbGetDownloadsItemsFromLogs( {from : pageNumber-1, size: itemsPerPage}, function(data) {
 			if(data.status === 'ok') {
         currentContentsPage = pageNumber;
 				var total = data.hits.total;
@@ -351,8 +354,40 @@ function loadPage(){
       }
   });
 
+  var arrLogItems = [];
+
   const intervalObj = setInterval(() => {
-    console.log('interviewing the interval');
-  }, 10000);
+    //console.log('interviewing the interval');
+    if (arrLogItems.length) {
+      return;
+    }
+    
+    arrLogItems = $('.resultItem');
+
+    function getItemStatus() {
+      if (arrLogItems.length == 0) {
+        return;
+      }
+      var itemId = $(arrLogItems[0]).attr('id');
+      var $item = $(arrLogItems[0]);
+      //console.log('itemId', itemId);
+      dbGetDownloadedCountInItem(itemId, function(err, total, downloaded) {
+        if (err) {
+          console.log('err: dbGetDownloadedCountInItem', err);
+        } else {
+          var status = downloaded + ' / ' + total + '  items';
+          $item.find('.itemStatus').html(status);  
+          arrLogItems.splice( 0, 1 );   
+          getItemStatus();   
+        }
+      });
+    }
+
+    getItemStatus();
+    
+    
+  }, 1000);
+
+
   
 };

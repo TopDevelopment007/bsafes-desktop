@@ -13,7 +13,7 @@
     <% include commonHeader %>
   </head>
 
-  <body class="">
+  <body class="bSafesBody">
     <% include navBarWithoutSignIn %>
     <div>
       <div class="col-xs-10">
@@ -42,11 +42,16 @@
           <form class="form-horizontal backgroundColorWhite">
             <fieldset>
               <br>
+              
+              <div class="row form-group">                
+                <div class="col-xs-10 col-xs-offset-1 col-sm-offset-3 col-sm-6">
+                </div>
+              </div>
+              
               <div class="row form-group">
                 <div class="col-xs-10 col-xs-offset-1 col-sm-offset-3 col-sm-6">
-                  <label for="masterId" class="control-label">Account ID</label>
-                  <span class="hidden" id="masterId"><%=masterId%></span>
-                  <h4 id="displayMasterId"><%=displayMasterId%></h4>
+                  <label for="memberLoginURL" class="control-label">Login URL</label>
+                  <input type="text" class="form-control" id="memberLoginURL" placeholder="" value="https://www.openbsafes.com/m/s/demo">
                 </div>
               </div>
               <div class="row form-group">

@@ -76,7 +76,8 @@
    		switch(pathItemType) {
      		case 'u':
        		pathItemIcon = 'Personal';
-       		pathItemLink = '/';
+       		//pathItemLink = '/';
+          pathItemLink = '/safe/';
        		break;
      		case 't':
 					teamName = DOMPurify.sanitize(teamName);
@@ -202,6 +203,21 @@
   function hideV5LoadingIn($element) {
     $element.LoadingOverlay("hide");
   }
+
+  function showDownloadLoadingIn()
+  {
+    $(".btnDownload").LoadingOverlay("show", {
+      image       : "",
+      fontawesome : "fa fa-circle-o-notch fa-spin",
+      maxSize     : "38px", 
+      minSize      : "36px",
+      background: "rgba(255, 255, 255, 0.0)"   
+    });
+  }
+
+  function hideDownloadLoadingIn() {
+    $(".btnDownload").LoadingOverlay("hide");
+  };
 
   function showLoading() {
 		$(".addAnItemRow").LoadingOverlay("show", {
@@ -1291,8 +1307,8 @@ function getTeamData(teamId, done) {
 		teamId: teamId
 	}, function(data, textStatus, jQxhr) {
 		if(data.status === 'ok') {
-			done(null, data.team);
       dbInsertTeams(server_addr + '/memberAPI/getTeamData', teamId, data);
+			done(null, data.team);      
 		} else {
 			done(data.err, null);
       console.log('err:(getTeamData)', data.err);
@@ -1445,130 +1461,113 @@ function positionItemNavigationControls() {
 
 function downloadSelectedItems(selectedItems)
 {
-  //console.log('edi_donwload');
-  //showLoadingIn($('#addATeamBtn'));
   dbAddDownloadsItemsInLogs(selectedItems);
 
+  var arrList = [];
   for(var i=0; i<selectedItems.length; i++) {
-
-    // var downloadItem = function(item) {
-    //   return new Promise((resolve, reject) => {
-    //     downloadItemByItemID(item.id, [item.id]);
-    //     resolve('ok');
-
-    //   });
-    // }
-
-    // var item = selectedItems[i];
-    // downloadItem(item).then((successMessage) =>{
-    //   console.log('Handle resolved promise ('+successMessage+') here.');
-    //   hideLoadingIn($('#addATeamBtn'));
-    // }).catch((reason) => {
-    //   console.log('Error: Handle rejected promise ('+reason+') here.');
-    //   hideLoadingIn($('#addATeamBtn'));
-    // });
-    console.log('start');
-    var downloading = downloadItemByItemID(selectedItems[i].id, [selectedItems[i].id]);
-    downloading.then(function(result) {
-        console.log('end');
-    }, function(err) {
-        console.log(err);
-    })
-    
-    // console.log('result = ', ret);
-
+    arrList.push(selectedItems[i].id);
   }
-  
 
+  downloadItemByItemID(arrList, function() {
+      hideDownloadLoadingIn();
+  });
 }
 
-//function downloadItemByItemID(rootTeamID, arrList)
-var downloadItemByItemID = function(rootTeamID, arrList)
-{
-  return new Promise(function(resolve, reject) 
-  {
-    
-    var return_size = 0;
-    var return_data = {};
-    
-    var itemList = [];
-    var itemID = '';
+async function downloadItemByItemID(arrList, done)
+{    
+  var return_size = 0;
+  var return_data = {};
 
-    //console.log('downloadItemByItemID', itemID);
-    if (arrList.length < 1) {
-      // finished.
-      console.log('finished', arrList);
-      resolve('ok');
-      return;
+  var itemList = [];
+  var itemID = '';
+
+  //console.log('downloadItemByItemID', itemID);
+  if (arrList.length < 1) {
+    //console.log('finished', arrList);
+    done();
+    return;
+  }
+
+  itemID = arrList[0];
+  dbInsertDownloadList(itemID);
+
+  var itemType = checkItemType(itemID);
+
+  if (itemType == 'skip') {
+    arrList.splice( arrList.indexOf(itemID), 1 );
+    downloadItemByItemID(arrList, done);
+  }
+  if ( (itemType != 'team') && (itemType != 'personal') ){
+    await getItemPath(itemID);
+  }
+
+  if (itemType == 'page') {
+    //dbInsertPages(itemID);
+    await setContainerAndTeamOfPage(itemID);
+    arrList.splice( arrList.indexOf(itemID), 1 );
+    downloadItemByItemID(arrList, done);
+  } else {
+    if (itemType == 'container') {
+      var teamIdOfItem = await getContainerData(itemID);
+      await getTeamDataInTeams(teamIdOfItem);
+    } else if (itemType == 'team') {
+      await getTeamDataInTeams(itemID);
     }
-    
-    itemID = arrList[0];
-    dbInsertDownloadList(itemID);
-    
-    var itemType = checkItemType(itemID);
-    if (itemType != 'team') {
-      getItemPath(itemID);
-    }
 
-    if (itemType == 'page') {
-      dbInsertPages(itemID);
-
-      //var remote = require ("electron").remote;
-      //const hello = remote.getGlobal("glbDownload")(itemID);
-      downloadPages(itemID);
-      
-      arrList.splice( arrList.indexOf(itemID), 1 );
-      downloadItemByItemID(rootTeamID, arrList);
-    } else {
-      if (itemType == 'container') {
-        getContainerData(itemID);
-      } else if (itemType == 'team') {
-        getTeamDataInTeams(itemID);
-      }
-
-      downloadListAndPage(itemID, function(hits){      
-        hits.forEach(function(item) {
-          arrList.push(item._id);
-        });
-        arrList.splice( arrList.indexOf(itemID), 1 );
-        downloadItemByItemID(rootTeamID, arrList);          
+    downloadListAndPage(itemID, function(hits){      
+      hits.forEach(function(item) {
+        arrList.push(item._id);
       });
-      
-    }
-
+      arrList.splice( arrList.indexOf(itemID), 1 );
+      downloadItemByItemID(arrList, done);          
+    });
   }
-)}
-
-function getTeamDataInTeams(teamId) {
-  var isDownload = 1;
-  $.post(server_addr + '/memberAPI/getTeamData', {
-    teamId: teamId
-  }, function(data, textStatus, jQxhr) {
-    if(data.status === 'ok') {
-      dbInsertTeams(server_addr + '/memberAPI/getTeamData', teamId, data, isDownload);
-    } else {
-      console.log('err:(getTeamDataInTeams)', data.err);
-    }
-  }, 'json');
+     
+  
 }
 
-function getContainerData(itemId) {
-  var isDownload = 1;
-  $.post(server_addr + '/memberAPI/getItemData', {
-    itemId: itemId
-    }, function(data, textStatus, jQxhr ){
+async function getTeamDataInTeams(teamId) {
+
+  return new Promise(resolve => {
+
+    var isDownload = 1;
+    $.post(server_addr + '/memberAPI/getTeamData', {
+      teamId: teamId
+    }, function(data, textStatus, jQxhr) {
       if(data.status === 'ok') {
-        dbInsertContainers(server_addr + '/memberAPI/getItemData', itemId, data, isDownload);
-        var itemSpace = data.item.container;
-        var itemSpaceParts = itemSpace.split(':');
-        itemSpaceParts.splice(-2, 2);
-        var teamIdOfItem = itemSpaceParts.join(':');
-        dbInsertDownloadList(teamIdOfItem);
-        getTeamDataInTeams(teamIdOfItem);
+        dbInsertTeams(server_addr + '/memberAPI/getTeamData', teamId, data, isDownload);
       } else {
-        console.log('err:(getItemData)', data.err);
+        console.log('err:(getTeamDataInTeams)', data.err);
       }
+      resolve();
     }, 'json');
+
+  });
+}
+
+async function getContainerData(itemId) {
+
+  return new Promise(resolve => {
+    var isDownload = 1;
+    $.post(server_addr + '/memberAPI/getItemData', {
+      itemId: itemId
+      }, function(data, textStatus, jQxhr ){
+        if(data.status === 'ok') {
+          var teamIdOfItem;
+          dbInsertContainers(server_addr + '/memberAPI/getItemData', itemId, data, isDownload);
+          var itemSpace = data.item.container;
+          var itemSpaceParts = itemSpace.split(':');
+          itemSpaceParts.splice(-2, 2);
+          teamIdOfItem = itemSpaceParts.join(':');
+          dbInsertDownloadList(teamIdOfItem);
+          //getTeamDataInTeams(teamIdOfItem);
+        } else {
+          teamIdOfItem = null;
+          console.log('err:(getItemData)', data.err);
+        }
+        resolve(teamIdOfItem);
+      }, 'json');
+  });
 }
 
 function downloadListAndPage(itemId, fn) {
@@ -1590,7 +1589,7 @@ function downloadListAndPage(itemId, fn) {
       reqUrl = server_addr + '/memberAPI/getContainerContents';
       postData = { itemId: itemId, size: default_size, from: 0 };
       db_fn = dbInsertContainers;
-    } else if (type == 'team') {
+    } else if ((type == 'team') || (type == 'personal') ){
       reqUrl = server_addr + '/memberAPI/listItems';
       var currentSpace = itemID + ':' + '1' + ':' + '0';
       postData = { container: currentSpace, size: default_size, from: 0 };
@@ -1611,12 +1610,6 @@ function downloadListAndPage(itemId, fn) {
                 db_fn(reqUrl, itemId, total_data, isDownload);
                 callback_fn(total_data.hits.hits);
 
-                // arrList.splice( arrList.indexOf(itemId), 1 );
-                // total_data.hits.hits.forEach(function(item) {
-                //   arrList.push(item._id);
-                // });
-                // downloadListAndPage(rootTeamID, arrList);
-
               } else {
                 console.log('err:('+reqUrl+')', total_data);
               }
@@ -1624,12 +1617,6 @@ function downloadListAndPage(itemId, fn) {
           } else {
             db_fn(reqUrl, itemId, data, isDownload);
             callback_fn(data.hits.hits);
-            
-            // arrList.splice( arrList.indexOf(itemId), 1 );
-            // data.hits.hits.forEach(function(item) {
-            //   arrList.push(item._id);
-            // });
-            // downloadListAndPage(rootTeamID, arrList);
           }
         }
     }, 'json');
@@ -1637,7 +1624,7 @@ function downloadListAndPage(itemId, fn) {
   }
 };
 
-
+/*
 function checkItemType(itemId)
 {
   var itemType = itemId.split(':')[0];
@@ -1669,92 +1656,58 @@ function checkItemType(itemId)
       retType = 'page';
       break;
     default:
+      retType = 'skip';
       break;
   }
 
   return retType;
 }
+*/
 
-function downloadPages(pageId) 
+async function setContainerAndTeamOfPage(pageId) 
 {
-
-  function getPageItem(itemID)
-  {
+  return new Promise(resolve => {
     $.post(server_addr + '/memberAPI/getPageItem',
-       {itemId: itemID},
+       {itemId: pageId},
        function(data, textStatus, jQxhr) { 
          if (data.status == 'ok') {
-           
-            dbInsertPageContents(server_addr + '/memberAPI/getPageItem', itemID, data);
-
             var item = data.item;
             var itemSpace = item.space;
             var itemSpaceParts = itemSpace.split(':');
             itemSpaceParts.splice(-2, 2);
             var teamId = itemSpaceParts.join(':');
             
-            dbUpdateDownloadStatusTeam(teamId);
+            //dbUpdateDownloadStatusTeam(teamId);
             dbInsertDownloadList(teamId);
 
             // container
-            var container_id = data.item.container;
-            dbInsertDownloadList(container_id);
+            var containerId = data.item.container;
+            dbInsertDownloadList(containerId);
+
+            dbSetContainerAndTeamOfPage(pageId, teamId, containerId)
 
          } else {
-           console.log('error : download page ');
+           console.log('error : setContainerAndTeamOfPage ');
          }
+         resolve();
        }
     );
-  }
-
-  getPageItem(pageId);
-
-  function getPageComments(itemID) {
-    var default_size = 100;
-    var postData = {};
-    var return_size = 0;
-    var return_data = {};
-
-    $.post(server_addr + '/memberAPI/getPageComments', {
-      itemId: itemID,
-      size: default_size,
-      from: 0
-    }, function(data, textStatus, jQxhr) {
-      if (data.status === "ok") {
-        var total = data.hits.total;
-        var hits = data.hits.hits;
-
-        if (default_size < total) {
-          $.post(server_addr + '/memberAPI/getPageComments', {
-            itemId: itemID,
-            size: total,
-            from: 0
-          }, function(total_data, textStatus, jQxhr) {
-            dbInsertPageContents(server_addr + '/memberAPI/getPageComments', itemID, total_data);
-          });
-        } else {
-          dbInsertPageContents(server_addr + '/memberAPI/getPageComments', itemID, data);
-        }
-      } else {
-        console.log('error');
-      }
-    });
-  }
-
-  getPageComments(pageId);
-
+  });
 }
 
-function getItemPath(itemId)
+async function getItemPath(itemId)
 {
-  $.post(server_addr + '/memberAPI/getItemPath', {
-    itemId: itemId 
-  }, function(data, textStatus, jQxhr) {
-    if(data.status === 'ok') {
-      dbInsertItemPath(server_addr + '/memberAPI/getItemPath', itemId, data);
-    } else {
-      console.log('error_getItemPath', itemId);
-    }
-  }, 'json');
+  return new Promise(resolve => {
+    $.post(server_addr + '/memberAPI/getItemPath', {
+      itemId: itemId 
+    }, function(data, textStatus, jQxhr) {
+      if(data.status === 'ok') {
+        dbInsertItemPath(server_addr + '/memberAPI/getItemPath', itemId, data);
+      } else {
+        console.log('error_getItemPath', itemId);
+      }
+      resolve();
+    }, 'json');
+  });
 }
 

@@ -13,6 +13,7 @@
   </head>
   <body class="">
 		<span class='hidden' id='teamId'><%=teamId%></span>
+    <p class='loginUserId hidden'><%=loginUserId%></p>
     <% include navBar %>
 		<div class="row margin0Px">
 			<div class="col-xs-9 paddingLeft0Px">
@@ -99,6 +100,7 @@
 										</div>
 									</a>
 									<div class="col-xs-3">
+                    <!--
 										<div class="btn-group pull-right">
 											<button class="itemControl addItemBtn dropdown-toggle btn btn-link btn-xs" data-toggle="dropdown" type="button"><i class="fa fa-plus" aria-hidden="true"></i></button>
                    		<ul class="dropdown-menu">
@@ -114,6 +116,7 @@
     										<li><a class="dropAction dropAfter" href="#">Drop after</a></li>
   										</ul>
 										</div>
+                    -->
 										<div class="checkbox pull-right">
             					<input type="checkbox" class="itemControl selectItemBox">
         						</div>
@@ -198,7 +201,9 @@
 				</div>
 			</div>
 		</div>
-		<% include itemsToolbar %>
+		<% //include itemsToolbar %>
+    <% include navBarBottom %>
+    <% include downloadControls %>
     <%
       var loadForgeJS = true;
       var safeJS = true;

@@ -37,6 +37,8 @@ var pkiDecrypt;
 var setIsATeamItem;
 
 var currentImageDownloadXhr = null;
+var download_folder_path = 'bsafes_downloads/';
+const fs = require('fs');
 
 // --- Page Control Functions ---
 var pageControlFunctions = {
@@ -1067,7 +1069,7 @@ var downloadAttachment = function(e) {
             });
         }
 
-        function downloadAChunk(signedURL) {
+        function downloadAChunk(file_name) {
             var xhr = new XMLHttpRequest();
             var isDownloaded = false;
             enableStop();
@@ -1080,10 +1082,7 @@ var downloadAttachment = function(e) {
                     stopped = true;
                     console.log('Stopping downloading chunk:', chunkIndex);
                 });
-            }
-            ;
-            xhr.open('GET', signedURL, true);
-            xhr.responseType = 'arraybuffer';
+            }            
 
             var attachmentFileProgress = 0;
             var previousProgress = 0;
@@ -1101,104 +1100,157 @@ var downloadAttachment = function(e) {
             };
             timer = setTimeout(timeout, 10000);
 
-            xhr.addEventListener("progress", function(evt) {
-                console.log('isDownloaded:', isDownloaded);
-                if (isDownloaded)
-                    return;
-                if (evt.lengthComputable) {
-                    attachmentFileProgress = downloadedFileProgress + (evt.loaded / evt.total * 100) / numberOfChunks;
-                    attachmentFileProgress = Math.floor(attachmentFileProgress * 100) / 100;
-                    console.log('file progress:', attachmentFileProgress);
-                    $attachment.find('.attachmentFileProgress').text(attachmentFileProgress + ' %');
-                    $progress.find('.progress-bar').css('width', attachmentFileProgress + '%');
-                }
-            }, false);
+            // xhr.open('GET', signedURL, true);
+            // xhr.responseType = 'arraybuffer';
 
-            xhr.onload = function(e) {
-                var encryptedChunkInArrayBuffer = this.response;
-                isDownloaded = true;
-                console.log('isDownloaded:', isDownloaded);
-
-                console.log('downloaded chunk size:', encryptedChunkInArrayBuffer.byteLength);
-                /*          $(document.getElementById('progressBar'+id)).parent().remove();
-          $.post(server_addr + '/memberAPI/postS3Download', {
-            itemId: itemId,
-            s3Key: s3CommonKey
-          }, function(data, textStatus, jQxhr ){
-            if(data.status === 'ok'){
-              var item = data.item;
-              var size = item.size;
-*/
-                console.log('Chunk downloaded:', chunkIndex);
-
-                $decryptChunkPromise.done(function() {
-                    chunkIndex++;
-                    downloadedFileProgress = chunkIndex / numberOfChunks * 100;
-                    if (chunkIndex < numberOfChunks)
-                        downloadDecryptAndAssemble();
-                    console.log('Decrypt Chunk:', decryptedFileIndex);
-                    $decryptChunkDeferred = $.Deferred();
-                    $decryptChunkPromise = $decryptChunkDeferred.promise();
-                    decryptChunkInArrayBufferAsync(encryptedChunkInArrayBuffer, decryptedFileInUint8Array, decryptedFileIndex, itemKey, itemIV, function(err, decryptedChunkSize) {
-
-                        if (err) {
-                            alert(err);
-                            $decryptChunkDeferred.reject();
-                        } else {
-                            console.log('decryptedChunkSize', decryptedChunkSize);
-                            decryptedFileIndex += decryptedChunkSize;
-                            decryptChunkIndex += 1;
-                            console.log(decryptedFileIndex);
-                            if (decryptChunkIndex === numberOfChunks) {
-                                changeDownloadingState($attachment, 'Downloaded');
-                                isDownloading = false;
-                                $attachment.find('.attachmentFileProgress').text('');
-                                $progress.remove();
-                                var blob = new Blob([decryptedFileInUint8Array],{
-                                    type: fileType
-                                });
-                                if (navigator && navigator.msSaveBlob) {
-                                    return navigator.msSaveBlob(blob, fileName);
-                                } else {
-                                    var link = window.URL.createObjectURL(blob);
-
-                                    var $downloadLink = $('<a href="#" style="display:none">Save</a>');
-                                    $downloadLink.attr('href', link);
-                                    $downloadLink.attr('download', fileName);
-                                    $('.container').append($downloadLink);
-                                    $downloadLink[0].click();
-                                }
-                            }
-                            $decryptChunkDeferred.resolve();
+            // xhr.addEventListener("progress", function(evt) {
+            //     console.log('isDownloaded:', isDownloaded);
+            //     if (isDownloaded)
+            //         return;
+            //     if (evt.lengthComputable) {
+            //         attachmentFileProgress = downloadedFileProgress + (evt.loaded / evt.total * 100) / numberOfChunks;
+            //         attachmentFileProgress = Math.floor(attachmentFileProgress * 100) / 100;
+            //         console.log('file progress:', attachmentFileProgress);
+            //         $attachment.find('.attachmentFileProgress').text(attachmentFileProgress + ' %');
+            //         $progress.find('.progress-bar').css('width', attachmentFileProgress + '%');
+            //     }
+            // }, false);
+            var path = download_folder_path + file_name;
+            fs.stat(path, function(error, stats) {
+                fs.open(path, "r", function(error, fd) {
+                    var buffer = new Buffer(stats.size);
+                    fs.read(fd, buffer, 0, buffer.length, null, function(error, bytesRead, buffer) {
+                        //var data = buffer.toString("utf8");
+                        //console.log(data);
+                        function toArrayBuffer(myBuf) {
+                           var myBuffer = new ArrayBuffer(myBuf.length);
+                           var res = new Uint8Array(myBuffer);
+                           for (var i = 0; i < myBuf.length; ++i) {
+                              res[i] = myBuf[i];
+                           }
+                           return myBuffer;
                         }
+                        //var encryptedChunkInArrayBuffer = this.response;
+                        var encryptedChunkInArrayBuffer = toArrayBuffer(buffer);
+                        isDownloaded = true;
+                        console.log('isDownloaded:', isDownloaded);
+
+                        console.log('downloaded chunk size:', encryptedChunkInArrayBuffer.byteLength);
+                        console.log('Chunk downloaded:', chunkIndex);
+
+                        $decryptChunkPromise.done(function() {
+                            chunkIndex++;
+                            downloadedFileProgress = chunkIndex / numberOfChunks * 100;
+                            if (chunkIndex < numberOfChunks)
+                                downloadDecryptAndAssemble();
+                            console.log('Decrypt Chunk:', decryptedFileIndex);
+                            $decryptChunkDeferred = $.Deferred();
+                            $decryptChunkPromise = $decryptChunkDeferred.promise();
+                            decryptChunkInArrayBufferAsync(encryptedChunkInArrayBuffer, decryptedFileInUint8Array, decryptedFileIndex, itemKey, itemIV, function(err, decryptedChunkSize) {
+
+                                if (err) {
+                                    alert(err);
+                                    $decryptChunkDeferred.reject();
+                                } else {
+                                    console.log('decryptedChunkSize', decryptedChunkSize);
+                                    decryptedFileIndex += decryptedChunkSize;
+                                    decryptChunkIndex += 1;
+                                    console.log(decryptedFileIndex);
+                                    if (decryptChunkIndex === numberOfChunks) {
+                                        changeDownloadingState($attachment, 'Downloaded');
+                                        isDownloading = false;
+                                        $attachment.find('.attachmentFileProgress').text('');
+                                        $progress.remove();
+                                        var blob = new Blob([decryptedFileInUint8Array],{
+                                            type: fileType
+                                        });
+                                        if (navigator && navigator.msSaveBlob) {
+                                            return navigator.msSaveBlob(blob, fileName);
+                                        } else {
+                                            var link = window.URL.createObjectURL(blob);
+
+                                            var $downloadLink = $('<a href="#" style="display:none">Save</a>');
+                                            $downloadLink.attr('href', link);
+                                            $downloadLink.attr('download', fileName);
+                                            $('.container').append($downloadLink);
+                                            $downloadLink[0].click();
+                                        }
+                                    }
+                                    $decryptChunkDeferred.resolve();
+                                }
+                            });
+                        });
+                        
                     });
                 });
-                /*
-            var link = window.URL.createObjectURL(new Blob([decryptedChunkInUint8Array]), {type: 'image/jpeg'});
-              $img = $('<img>');
-              $img.attr('src', link);
-              $('.container').append($img);
+            });
 
-              $downloadedElement = $(document.getElementById(id));
-              $downloadedElement.removeClass('bSafesDownloading');
-              displayImage(link);
-            }
-          }, 'json');*/
-            }
-            ;
+            // xhr.onload = function(e) {
+            //     var encryptedChunkInArrayBuffer = this.response;
+            //     isDownloaded = true;
+            //     console.log('isDownloaded:', isDownloaded);
 
-            xhr.onerror = xhr.onabort = function() {
-                console.log('isDownloaded:', isDownloaded);
-                if (isDownloaded)
-                    return;
-                enableResume();
-            }
-            ;
+            //     console.log('downloaded chunk size:', encryptedChunkInArrayBuffer.byteLength);
+            //     console.log('Chunk downloaded:', chunkIndex);
 
-            xhr.send();
+            //     $decryptChunkPromise.done(function() {
+            //         chunkIndex++;
+            //         downloadedFileProgress = chunkIndex / numberOfChunks * 100;
+            //         if (chunkIndex < numberOfChunks)
+            //             downloadDecryptAndAssemble();
+            //         console.log('Decrypt Chunk:', decryptedFileIndex);
+            //         $decryptChunkDeferred = $.Deferred();
+            //         $decryptChunkPromise = $decryptChunkDeferred.promise();
+            //         decryptChunkInArrayBufferAsync(encryptedChunkInArrayBuffer, decryptedFileInUint8Array, decryptedFileIndex, itemKey, itemIV, function(err, decryptedChunkSize) {
+
+            //             if (err) {
+            //                 alert(err);
+            //                 $decryptChunkDeferred.reject();
+            //             } else {
+            //                 console.log('decryptedChunkSize', decryptedChunkSize);
+            //                 decryptedFileIndex += decryptedChunkSize;
+            //                 decryptChunkIndex += 1;
+            //                 console.log(decryptedFileIndex);
+            //                 if (decryptChunkIndex === numberOfChunks) {
+            //                     changeDownloadingState($attachment, 'Downloaded');
+            //                     isDownloading = false;
+            //                     $attachment.find('.attachmentFileProgress').text('');
+            //                     $progress.remove();
+            //                     var blob = new Blob([decryptedFileInUint8Array],{
+            //                         type: fileType
+            //                     });
+            //                     if (navigator && navigator.msSaveBlob) {
+            //                         return navigator.msSaveBlob(blob, fileName);
+            //                     } else {
+            //                         var link = window.URL.createObjectURL(blob);
+
+            //                         var $downloadLink = $('<a href="#" style="display:none">Save</a>');
+            //                         $downloadLink.attr('href', link);
+            //                         $downloadLink.attr('download', fileName);
+            //                         $('.container').append($downloadLink);
+            //                         $downloadLink[0].click();
+            //                     }
+            //                 }
+            //                 $decryptChunkDeferred.resolve();
+            //             }
+            //         });
+            //     });
+            // }
+            
+
+            // xhr.onerror = xhr.onabort = function() {
+            //     console.log('isDownloaded:', isDownloaded);
+            //     if (isDownloaded)
+            //         return;
+            //     enableResume();
+            // }
+            // ;
+
+            // xhr.send();
         }
 
-        $.post(server_addr + '/memberAPI/preS3ChunkDownload', {
+        //$.post(server_addr + '/memberAPI/preS3ChunkDownload', {
+        dbQueryDataInPageAttatchment(server_addr + '/memberAPI/preS3ChunkDownload', {
             itemId: itemId,
             chunkIndex: chunkIndex.toString(),
             s3KeyPrefix: id
@@ -1214,14 +1266,12 @@ var downloadAttachment = function(e) {
                     decryptedFileInUint8Array = new Uint8Array(fileSize);
                     decryptedFileIndex = 0;
                 }
-                downloadAChunk(data.signedURL);
+                downloadAChunk(data.file_name);
             }
-        }, 'json').fail(function() {
-            enableResume();
         });
-        ;
+       
     }
-    ;downloadDecryptAndAssemble();
+    downloadDecryptAndAssemble();
     return false;
 }
 
@@ -2322,53 +2372,42 @@ function downloadImageObject(encryptedImageElement) {
         targetElement.attr('src', link);
     }
 
-    $.post(server_addr + '/memberAPI/preS3Download', {
-        itemId: itemId,
-        s3Key: s3Key
-    }, function(data, textStatus, jQxhr) {
-        if (data.status === 'ok') {
-            var signedURL = data.signedURL;
-
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', signedURL, true);
-            xhr.responseType = 'arraybuffer';
-
-            xhr.addEventListener("progress", function(evt) {
-                if (evt.lengthComputable) {
-                    var percentComplete = evt.loaded / evt.total * 100;
-
-                    console.log(percentComplete);
-                    $(document.getElementById('progressBar' + id)).width(percentComplete + '%');
-                }
-            }, false);
-
-            xhr.onload = function(e) {
-                var encryptedImageDataInArrayBuffer = this.response;
-                $(document.getElementById('progressBar' + id)).parent().remove();
-                $.post(server_addr + '/memberAPI/postS3Download', {
-                    itemId: itemId,
-                    s3Key: s3CommonKey
-                }, function(data, textStatus, jQxhr) {
-                    if (data.status === 'ok') {
-                        var item = data.item;
-                        var size = item.size;
-
-                        var decryptedImageDataInUint8Array = decryptArrayBuffer(encryptedImageDataInArrayBuffer, itemKey, itemIV);
-                        var link = window.URL.createObjectURL(new Blob([decryptedImageDataInUint8Array]), {
-                            type: 'image/jpeg'
-                        });
-                        $downloadedElement = $(document.getElementById(id));
-                        $downloadedElement.removeClass('bSafesDownloading');
-                        displayImage(link);
+    
+    dbQueryFileInPageContentsFile('signedURL', itemId, s3Key, function(file_name) {
+        var path = download_folder_path + file_name;
+        fs.stat(path, function(error, stats) {
+            fs.open(path, "r", function(error, fd) {
+                var buffer = new Buffer(stats.size);
+                fs.read(fd, buffer, 0, buffer.length, null, function(error, bytesRead, buffer) {
+                    //var data = buffer.toString("utf8");
+                    //console.log(data);
+                    function toArrayBuffer(myBuf) {
+                       var myBuffer = new ArrayBuffer(myBuf.length);
+                       var res = new Uint8Array(myBuffer);
+                       for (var i = 0; i < myBuf.length; ++i) {
+                          res[i] = myBuf[i];
+                       }
+                       return myBuffer;
                     }
-                }, 'json');
-            }
-            ;
+                    var encryptedImageDataInArrayBuffer = toArrayBuffer(buffer);
+                    $(document.getElementById('progressBar' + id)).parent().remove();
+                    
 
-            xhr.send();
+                    var decryptedImageDataInUint8Array = decryptArrayBuffer(encryptedImageDataInArrayBuffer, itemKey, itemIV);
+                    var link = window.URL.createObjectURL(new Blob([decryptedImageDataInUint8Array]), {
+                        type: 'image/jpeg'
+                    });
+                    $downloadedElement = $(document.getElementById(id));
+                    $downloadedElement.removeClass('bSafesDownloading');
+                    displayImage(link);
+                       
+                });
+            });
+        });
 
-        }
-    }, 'json');
+    });
+            
+
 }
 
 function downloadVideoObject($videoDownload) {
@@ -2381,64 +2420,118 @@ function downloadVideoObject($videoDownload) {
         attachProgressBar($videoDownload);
     }
 
-    $.post(server_addr + '/memberAPI/preS3Download', {
+    //$.post(server_addr + '/memberAPI/preS3Download', {
+    dbQueryDataInPageVideo(server_addr + '/memberAPI/preS3Download', {
         itemId: itemId,
         s3Key: s3Key
     }, function(data, textStatus, jQxhr) {
         if (data.status === 'ok') {
             var signedURL = data.signedURL;
+            var path = download_folder_path + data.file_name;
+            fs.stat(path, function(error, stats) {
+                fs.open(path, "r", function(error, fd) {
+                    var buffer = new Buffer(stats.size);
+                    fs.read(fd, buffer, 0, buffer.length, null, function(error, bytesRead, buffer) {
+                        //var data = buffer.toString("utf8");
+                        //console.log(data);
+                        function toArrayBuffer(myBuf) {
+                           var myBuffer = new ArrayBuffer(myBuf.length);
+                           var res = new Uint8Array(myBuffer);
+                           for (var i = 0; i < myBuf.length; ++i) {
+                              res[i] = myBuf[i];
+                           }
+                           return myBuffer;
+                        }
+                        $(document.getElementById('progressBar' + id)).parent().remove();
+                        //var encryptedVideoDataInArrayBuffer = this.response;
+                        var encryptedVideoDataInArrayBuffer = toArrayBuffer(buffer);
 
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', signedURL, true);
-            xhr.responseType = 'arraybuffer';
+                        decryptArrayBufferAsync(encryptedVideoDataInArrayBuffer, itemKey, itemIV, function(data) {
+                            videoBlob = new Blob([data],{
+                                type: "video/mp4"
+                            });
+                            videoLink = window.URL.createObjectURL(videoBlob);
 
-            xhr.addEventListener("progress", function(evt) {
-                if (evt.lengthComputable) {
-                    var percentComplete = evt.loaded / evt.total * 100;
+                            var $videoSpan = $('<span class="fr-video fr-draggable" contenteditable="false" draggable="true"><video class="bSafesVideo fr-draggable fr-dvi fr-fvc" controls="">Your browser does not support HTML5 video.</video></span>');
+                            var $video = $videoSpan.find('video');
+                            $video.attr('id', id);
+                            $video.attr('src', videoLink);
+                            var style = $videoDownload.attr('style');
+                            $video.attr('style', style);
 
-                    console.log(percentComplete);
-                    $(document.getElementById('progressBar' + id)).width(percentComplete + '%');
-                }
-            }, false);
+                            if ($videoDownload.hasClass('fr-dib'))
+                                $videoSpan.addClass('fr-dvb');
+                            if ($videoDownload.hasClass('fr-dii'))
+                                $videoSpan.addClass('fr-dvi');
+                            if ($videoDownload.hasClass('fr-fil'))
+                                $videoSpan.addClass('fr-fvl');
+                            if ($videoDownload.hasClass('fr-fic'))
+                                $videoSpan.addClass('fr-fvc');
+                            if ($videoDownload.hasClass('fr-fir'))
+                                $videoSpan.addClass('fr-fvr');
 
-            xhr.onload = function(e) {
-                $(document.getElementById('progressBar' + id)).parent().remove();
-                var encryptedVideoDataInArrayBuffer = this.response;
+                            var $targetElement = $(document.getElementById(id));
+                            // jQuery doesn't accept slashes in selector
+                            var $parent = $targetElement.parent();
+                            $parent.replaceWith($videoSpan);
 
-                decryptArrayBufferAsync(encryptedVideoDataInArrayBuffer, itemKey, itemIV, function(data) {
-                    videoBlob = new Blob([data],{
-                        type: "video/mp4"
+                        });
+                        
                     });
-                    videoLink = window.URL.createObjectURL(videoBlob);
-
-                    var $videoSpan = $('<span class="fr-video fr-draggable" contenteditable="false" draggable="true"><video class="bSafesVideo fr-draggable fr-dvi fr-fvc" controls="">Your browser does not support HTML5 video.</video></span>');
-                    var $video = $videoSpan.find('video');
-                    $video.attr('id', id);
-                    $video.attr('src', videoLink);
-                    var style = $videoDownload.attr('style');
-                    $video.attr('style', style);
-
-                    if ($videoDownload.hasClass('fr-dib'))
-                        $videoSpan.addClass('fr-dvb');
-                    if ($videoDownload.hasClass('fr-dii'))
-                        $videoSpan.addClass('fr-dvi');
-                    if ($videoDownload.hasClass('fr-fil'))
-                        $videoSpan.addClass('fr-fvl');
-                    if ($videoDownload.hasClass('fr-fic'))
-                        $videoSpan.addClass('fr-fvc');
-                    if ($videoDownload.hasClass('fr-fir'))
-                        $videoSpan.addClass('fr-fvr');
-
-                    var $targetElement = $(document.getElementById(id));
-                    // jQuery doesn't accept slashes in selector
-                    var $parent = $targetElement.parent();
-                    $parent.replaceWith($videoSpan);
-
                 });
-            }
-            ;
+            });
 
-            xhr.send();
+            // var xhr = new XMLHttpRequest();
+            // xhr.open('GET', signedURL, true);
+            // xhr.responseType = 'arraybuffer';
+
+            // xhr.addEventListener("progress", function(evt) {
+            //     if (evt.lengthComputable) {
+            //         var percentComplete = evt.loaded / evt.total * 100;
+
+            //         console.log('downloadVideoObject', percentComplete);
+            //         $(document.getElementById('progressBar' + id)).width(percentComplete + '%');
+            //     }
+            // }, false);
+
+            // xhr.onload = function(e) {
+            //     $(document.getElementById('progressBar' + id)).parent().remove();
+            //     var encryptedVideoDataInArrayBuffer = this.response;
+
+            //     decryptArrayBufferAsync(encryptedVideoDataInArrayBuffer, itemKey, itemIV, function(data) {
+            //         videoBlob = new Blob([data],{
+            //             type: "video/mp4"
+            //         });
+            //         videoLink = window.URL.createObjectURL(videoBlob);
+
+            //         var $videoSpan = $('<span class="fr-video fr-draggable" contenteditable="false" draggable="true"><video class="bSafesVideo fr-draggable fr-dvi fr-fvc" controls="">Your browser does not support HTML5 video.</video></span>');
+            //         var $video = $videoSpan.find('video');
+            //         $video.attr('id', id);
+            //         $video.attr('src', videoLink);
+            //         var style = $videoDownload.attr('style');
+            //         $video.attr('style', style);
+
+            //         if ($videoDownload.hasClass('fr-dib'))
+            //             $videoSpan.addClass('fr-dvb');
+            //         if ($videoDownload.hasClass('fr-dii'))
+            //             $videoSpan.addClass('fr-dvi');
+            //         if ($videoDownload.hasClass('fr-fil'))
+            //             $videoSpan.addClass('fr-fvl');
+            //         if ($videoDownload.hasClass('fr-fic'))
+            //             $videoSpan.addClass('fr-fvc');
+            //         if ($videoDownload.hasClass('fr-fir'))
+            //             $videoSpan.addClass('fr-fvr');
+
+            //         var $targetElement = $(document.getElementById(id));
+            //         // jQuery doesn't accept slashes in selector
+            //         var $parent = $targetElement.parent();
+            //         $parent.replaceWith($videoSpan);
+
+            //     });
+            // }
+            
+
+            //xhr.send();
 
         }
     }, 'json');
@@ -2666,82 +2759,151 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                                     var s3CommonKey = $downloadImage.data('s3Key');
                                     var s3Key = s3CommonKey + "_gallery";
 
-                                    $.post(server_addr + '/memberAPI/preS3Download', {
+                                    //$.post(server_addr + '/memberAPI/preS3Download', {
+                                    dbQueryDataInPageIamge(server_addr + '/memberAPI/preS3Download', {
                                         itemId: itemId,
                                         s3Key: s3Key
                                     }, function(data, textStatus, jQxhr) {
                                         if (data.status === 'ok') {
                                             var signedURL = data.signedURL;
 
-                                            var xhr = new XMLHttpRequest();
-                                            xhr.open('GET', signedURL, true);
-                                            xhr.responseType = 'arraybuffer';
+                                            // var xhr = new XMLHttpRequest();
+                                            // xhr.open('GET', signedURL, true);
+                                            // xhr.responseType = 'arraybuffer';
 
-                                            xhr.addEventListener("progress", function(evt) {
-                                                if (evt.lengthComputable) {
-                                                    var percentComplete = evt.loaded / evt.total * 100;
-                                                    $downloadImage.find('.progress-bar').css('width', percentComplete + '%');
-                                                }
-                                            }, false);
+                                            // xhr.addEventListener("progress", function(evt) {
+                                            //     if (evt.lengthComputable) {
+                                            //         var percentComplete = evt.loaded / evt.total * 100;
+                                            //         $downloadImage.find('.progress-bar').css('width', percentComplete + '%');
+                                            //     }
+                                            // }, false);
+                                            var path = download_folder_path + data.file_name;
+                                            fs.stat(path, function(error, stats) {
+                                                fs.open(path, "r", function(error, fd) {
+                                                    var buffer = new Buffer(stats.size);
+                                                    fs.read(fd, buffer, 0, buffer.length, null, function(error, bytesRead, buffer) {
+                                                        //var data = buffer.toString("utf8");
+                                                        //console.log(data);
+                                                        function toArrayBuffer(myBuf) {
+                                                           var myBuffer = new ArrayBuffer(myBuf.length);
+                                                           var res = new Uint8Array(myBuffer);
+                                                           for (var i = 0; i < myBuf.length; ++i) {
+                                                              res[i] = myBuf[i];
+                                                           }
+                                                           return myBuffer;
+                                                        }
+                                                        
 
-                                            xhr.onload = function(e) {
-                                                $downloadImage.find('.downloadText').text("Decrypting");
-                                                currentImageDownloadXhr = null;
-                                                var encryptedImageDataInArrayBuffer = this.response;
-                                                $.post(server_addr + '/memberAPI/postS3Download', {
-                                                    itemId: itemId,
-                                                    s3Key: s3CommonKey
-                                                }, function(data, textStatus, jQxhr) {
-                                                    if (data.status === 'ok') {
-                                                        var item = data.item;
-                                                        var size = item.size;
+                                                        $downloadImage.find('.downloadText').text("Decrypting");
+                                                        currentImageDownloadXhr = null;
+                                                        //var encryptedImageDataInArrayBuffer = this.response;
+                                                        var encryptedImageDataInArrayBuffer = toArrayBuffer(buffer);
+                                                        
+                                                        {
+                                                            // var item = data.item;
+                                                            // var size = item.size;
 
-                                                        var decryptedImageDataInUint8Array = decryptArrayBuffer(encryptedImageDataInArrayBuffer, itemKey, itemIV);
-                                                        var link = window.URL.createObjectURL(new Blob([decryptedImageDataInUint8Array]), {
-                                                            type: 'image/jpeg'
-                                                        });
-                                                        $img = $('<img class="img-responsive" src="' + link + '"' + '>');
-                                                        $img.on('load', function(e) {
-                                                            var $thisImg = $(e.target);
-                                                            $thisImg.data('width', $thisImg[0].width);
-                                                            $thisImg.data('height', $thisImg[0].height);
+                                                            var decryptedImageDataInUint8Array = decryptArrayBuffer(encryptedImageDataInArrayBuffer, itemKey, itemIV);
+                                                            var link = window.URL.createObjectURL(new Blob([decryptedImageDataInUint8Array]), {
+                                                                type: 'image/jpeg'
+                                                            });
+                                                            $img = $('<img class="img-responsive" src="' + link + '"' + '>');
+                                                            $img.on('load', function(e) {
+                                                                var $thisImg = $(e.target);
+                                                                $thisImg.data('width', $thisImg[0].width);
+                                                                $thisImg.data('height', $thisImg[0].height);
 
-                                                            var $imagePanel = $('.imagePanelTemplate').clone().removeClass('imagePanelTemplate hidden').addClass('imagePanel');
-                                                            $imagePanel.find('.deleteImageBtn').attr('data-key', s3CommonKey).on('click', pageControlFunctions.deleteImageOnPage);
-                                                            $imagePanel.attr('id', id);
-                                                            $imagePanel.find('.image').append($thisImg);
-                                                            var encryptedWords = $downloadImage.data('words');
-                                                            if (encryptedWords) {
-                                                                var encodedWords = decryptBinaryString(encryptedWords, itemKey, itemIV);
-                                                                var words = forge.util.decodeUtf8(encodedWords);
-                                                                words = DOMPurify.sanitize(words);
-                                                                $imagePanel.find('.froala-editor').html(words);
-                                                            }
-                                                            $imagePanel.find('.btnWrite').on('click', handleBtnWriteClicked);
-                                                            $imagePanel.find('.insertImages').on('change', insertImages);
-                                                            $downloadImage.before($imagePanel);
-                                                            $downloadImage.remove();
+                                                                var $imagePanel = $('.imagePanelTemplate').clone().removeClass('imagePanelTemplate hidden').addClass('imagePanel');
+                                                                $imagePanel.find('.deleteImageBtn').attr('data-key', s3CommonKey).on('click', pageControlFunctions.deleteImageOnPage);
+                                                                $imagePanel.attr('id', id);
+                                                                $imagePanel.find('.image').append($thisImg);
+                                                                var encryptedWords = $downloadImage.data('words');
+                                                                if (encryptedWords) {
+                                                                    var encodedWords = decryptBinaryString(encryptedWords, itemKey, itemIV);
+                                                                    var words = forge.util.decodeUtf8(encodedWords);
+                                                                    words = DOMPurify.sanitize(words);
+                                                                    $imagePanel.find('.froala-editor').html(words);
+                                                                }
+                                                                $imagePanel.find('.btnWrite').on('click', handleBtnWriteClicked);
+                                                                $imagePanel.find('.insertImages').on('change', insertImages);
+                                                                $downloadImage.before($imagePanel);
+                                                                $downloadImage.remove();
 
-                                                            done(null);
-                                                        });
-                                                        $img.on('click', function(e) {
-                                                            $thisImg = $(e.target);
-                                                            $thisImagePanel = $thisImg.closest('.imagePanel');
-                                                            var index = $thisImagePanel.attr('id');
-                                                            var startingIndex = parseInt(index.split('-')[1]);
-                                                            showGallery(startingIndex);
-                                                        });
-                                                    }
-                                                }, 'json');
+                                                                done(null);
+                                                            });
+                                                            $img.on('click', function(e) {
+                                                                $thisImg = $(e.target);
+                                                                $thisImagePanel = $thisImg.closest('.imagePanel');
+                                                                var index = $thisImagePanel.attr('id');
+                                                                var startingIndex = parseInt(index.split('-')[1]);
+                                                                showGallery(startingIndex);
+                                                            });
+                                                        }
+                                                        
 
-                                            }
-                                            ;
+                                                        
+                                                    });
+                                                });
+                                            });
 
-                                            xhr.send();
-                                            currentImageDownloadXhr = xhr;
+                                            // xhr.onload = function(e) {
+                                            //     $downloadImage.find('.downloadText').text("Decrypting");
+                                            //     currentImageDownloadXhr = null;
+                                            //     var encryptedImageDataInArrayBuffer = this.response;
+                                            //     $.post(server_addr + '/memberAPI/postS3Download', {
+                                            //         itemId: itemId,
+                                            //         s3Key: s3CommonKey
+                                            //     }, function(data, textStatus, jQxhr) {
+                                            //         if (data.status === 'ok') {
+                                            //             var item = data.item;
+                                            //             var size = item.size;
+
+                                            //             var decryptedImageDataInUint8Array = decryptArrayBuffer(encryptedImageDataInArrayBuffer, itemKey, itemIV);
+                                            //             var link = window.URL.createObjectURL(new Blob([decryptedImageDataInUint8Array]), {
+                                            //                 type: 'image/jpeg'
+                                            //             });
+                                            //             $img = $('<img class="img-responsive" src="' + link + '"' + '>');
+                                            //             $img.on('load', function(e) {
+                                            //                 var $thisImg = $(e.target);
+                                            //                 $thisImg.data('width', $thisImg[0].width);
+                                            //                 $thisImg.data('height', $thisImg[0].height);
+
+                                            //                 var $imagePanel = $('.imagePanelTemplate').clone().removeClass('imagePanelTemplate hidden').addClass('imagePanel');
+                                            //                 $imagePanel.find('.deleteImageBtn').attr('data-key', s3CommonKey).on('click', pageControlFunctions.deleteImageOnPage);
+                                            //                 $imagePanel.attr('id', id);
+                                            //                 $imagePanel.find('.image').append($thisImg);
+                                            //                 var encryptedWords = $downloadImage.data('words');
+                                            //                 if (encryptedWords) {
+                                            //                     var encodedWords = decryptBinaryString(encryptedWords, itemKey, itemIV);
+                                            //                     var words = forge.util.decodeUtf8(encodedWords);
+                                            //                     words = DOMPurify.sanitize(words);
+                                            //                     $imagePanel.find('.froala-editor').html(words);
+                                            //                 }
+                                            //                 $imagePanel.find('.btnWrite').on('click', handleBtnWriteClicked);
+                                            //                 $imagePanel.find('.insertImages').on('change', insertImages);
+                                            //                 $downloadImage.before($imagePanel);
+                                            //                 $downloadImage.remove();
+
+                                            //                 done(null);
+                                            //             });
+                                            //             $img.on('click', function(e) {
+                                            //                 $thisImg = $(e.target);
+                                            //                 $thisImagePanel = $thisImg.closest('.imagePanel');
+                                            //                 var index = $thisImagePanel.attr('id');
+                                            //                 var startingIndex = parseInt(index.split('-')[1]);
+                                            //                 showGallery(startingIndex);
+                                            //             });
+                                            //         }
+                                            //     }, 'json');
+
+                                            // }
+                                            
+
+                                            // xhr.send();
+                                            // currentImageDownloadXhr = xhr;
 
                                         }
-                                    }, 'json');
+                                    });
 
                                 }
                                 ;

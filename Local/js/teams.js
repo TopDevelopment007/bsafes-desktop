@@ -285,7 +285,7 @@ function loadPage(){
 				var encryptedTeamName = team.team._source.name;
 				var teamIV = team.team._source.IV;
 				var encodedTeamName = decryptBinaryString(encryptedTeamName, teamKey, teamIV);
-				var teamName = "<h2>" + forge.util.decodeUtf8(encodedTeamName) + "</h2>";
+				var teamName = "<h2>" + forge.util.decodeUtf8(encodedTeamName) + "</h2>";        
 				appendResult(teamName);
 
 				var publicKeyFromPem = pki.publicKeyFromPem(publicKeyPem);
