@@ -18,7 +18,8 @@
 		<div class="row margin0Px">
 			<div class="col-xs-9 paddingLeft0Px">
 	      <ul class="breadcrumb">
-					<li class="teamsPathItem"><a href="teams.ejs" class="teamsPathLink">&nbsp<i class="fa fa-building" aria-hidden="true"></i> Teams&nbsp</a></li>
+					<!--<li class="teamsPathItem"><a href="teams.ejs" class="teamsPathLink">&nbsp<i class="fa fa-building" aria-hidden="true"></i> Teams&nbsp</a></li>-->
+          <li class="teamsPathItem"><a href="javascript:navigateView('/teams/')" class="teamsPathLink">&nbsp<i class="fa fa-building" aria-hidden="true"></i> Teams&nbsp</a></li>
   	      <li><a id="teamName" href="#">Home</a><span>  </span></li>
     	  </ul>
 			</div>
@@ -26,7 +27,8 @@
 				<a href="#" class="btn btn-primary pull-right dropdown-toggle" id="addANewTabBtn" data-toggle="dropdown"><i class="fa fa-plus" aria-hidden="true"></i></a>
 				<ul class="pull-right dropdown-menu newTabDropdownMenu">
           <li id="newTabHint"><a href="#"><span class="whiteText fontWeightBold">Add a new tab</span></a></li>
-					<li><a href="teams.ejs" target="_blank"><span class="fontWeightBold">Teams</span></a></li>	
+					<!--<li><a href="teams.ejs" target="_blank"><span class="fontWeightBold">Teams</span></a></li>	-->
+          <li><a href="javascript:navigateView('/teams/')" target="_blank"><span class="fontWeightBold">Teams</span></a></li>  
           <li class="newTabTemplate hidden "><a href="#" target="_blank">Another tab</a></li>
         </ul>
 			</div>

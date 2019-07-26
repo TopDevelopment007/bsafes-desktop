@@ -1,7 +1,7 @@
   <nav class="navbar navbar-default navbar-static-top">
     <div class="container-fluid">
       <div class="navbar-header pull-left">
-				<span><a class="navbar-brand navbarTeamName" href="teams.ejs">BSafes</a></span>
+				<span><a class="navbar-brand navbarTeamName" href="javascript:navigateView('/teams/')">BSafes</a></span>
       </div>
 	  <%if(locals.user) {%>	
 			<div class="navbar-header pull-right">
@@ -15,7 +15,7 @@
     			</a>
     			<ul class="pull-right dropdown-menu">
 						<li class="personalLinkBackground"><a href="/safe/"><span class="blackText fontWeightBold"><%=locals.user.displayName%></span></a></li>
-						<li><a href="teams.ejs">Teams</a></li>
+						<li><a href="javascript:navigateView('/teams/')">Teams</a></li>
 						<li><a href="/managedMembers/">Manged Members</a></li>
 						<li><a href="#" class="lockBSafes">Lock</a></li>
 						<li><a href="#" class="signOut">Sign out</a></li>

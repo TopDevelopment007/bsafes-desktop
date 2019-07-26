@@ -22,7 +22,9 @@ function navigateView(view)
 	const path = require('path');
 	//const ejse = require ("electron").remote.require('ejs-electron');
 
-	if ( view.startsWith("/team/") ) {
+	if ( view.startsWith("/teams/") ) {
+		view = 'teams.ejs'
+	} else if ( view.startsWith("/team/") ) {
 		teamId = view.replace("/team/", "")
 		view = 'team.ejs'
 	} else if ( view.startsWith("/page/") ) {

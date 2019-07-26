@@ -241,10 +241,10 @@ function dbUpdatePageStatus(pageId, done)
 				} else {
 				}	
 			} else {
-				console.log('counterContentsImages', pageId, row.counterContentsImages);
-				console.log('counterVideos', pageId, row.counterVideos);
-				console.log('counterImages', pageId, row.counterImages);
-				console.log('counterAttatchments', pageId, row.counterAttatchments);
+				// console.log('counterContentsImages', pageId, row.counterContentsImages);
+				// console.log('counterVideos', pageId, row.counterVideos);
+				// console.log('counterImages', pageId, row.counterImages);
+				// console.log('counterAttatchments', pageId, row.counterAttatchments);
 			}
 			
 		}

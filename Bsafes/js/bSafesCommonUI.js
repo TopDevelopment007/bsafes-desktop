@@ -1595,7 +1595,7 @@ function downloadListAndPage(itemId, fn) {
       db_fn = dbInsertContainers;
     } else if ((type == 'team') || (type == 'personal') ){
       reqUrl = server_addr + '/memberAPI/listItems';
-      var currentSpace = itemID + ':' + '1' + ':' + '0';
+      var currentSpace = itemId + ':' + '1' + ':' + '0';
       postData = { container: currentSpace, size: default_size, from: 0 };
       db_fn = dbInsertTeams;
     }

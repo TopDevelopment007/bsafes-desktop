@@ -57,7 +57,14 @@ function interval()
             });
 
         });
-    } 
+    } else {
+        dbUpdatePageStatus(currentPage, function(isCompleted) {
+            if (isCompleted) {
+                currentPage = null;
+                return;
+            } 
+        });
+    }
 }
 
 function downloadPage(pageId) 
@@ -788,12 +795,12 @@ var downloadAttachment = function(id) {
     function downloadDecryptAndAssemble() {
 
         function enableResume() {
-            changeDownloadingState($attachment, 'Stopped');
+            //changeDownloadingState($attachment, 'Stopped');
             var $resume = $attachment.find('.resumeBtn');
             $resume.off();
             $resume.click(function(e) {
                 console.log('resuming downloading chunk:', chunkIndex);
-                changeDownloadingState($attachment, 'Downloading');
+                //changeDownloadingState($attachment, 'Downloading');
                 downloadDecryptAndAssemble();
             });
         }
@@ -844,45 +851,47 @@ var downloadAttachment = function(id) {
 				    fs.write(fd, new Buffer(buffer), 0, buffer.length, null, (err) => {
 				        if (err) throw 'error writing file: ' + err;
 				        dbInsertPageAttatchment(server_addr + '/memberAPI/preS3ChunkDownload', itemId, current_chunkIndex, id, data='', file_name);
-                        updatePageStatus(itemId, 'Attatchment');
+                        
 				        fs.close(fd, function() {
 				            console.log('wrote the Attatchment file successfully');
 				        });
 				    });
 				});
 
-                // var encryptedChunkInArrayBuffer = this.response;
-                // isDownloaded = true;
-                // console.log('isDownloaded:', isDownloaded);
+                var encryptedChunkInArrayBuffer = this.response;
+                isDownloaded = true;
+                console.log('isDownloaded:', isDownloaded);
 
-                // console.log('downloaded chunk size:', encryptedChunkInArrayBuffer.byteLength);
-                // console.log('Chunk downloaded:', chunkIndex);
+                console.log('downloaded chunk size:', encryptedChunkInArrayBuffer.byteLength);
+                console.log('Chunk downloaded:', chunkIndex);
 
-                // $decryptChunkPromise.done(function() {
-                //     chunkIndex++;
-                //     downloadedFileProgress = chunkIndex / numberOfChunks * 100;
-                //     if (chunkIndex < numberOfChunks)
-                //         downloadDecryptAndAssemble();
-                //     console.log('Decrypt Chunk:', decryptedFileIndex);
-                //     $decryptChunkDeferred = $.Deferred();
-                //     $decryptChunkPromise = $decryptChunkDeferred.promise();
-                //     decryptChunkInArrayBufferAsync(encryptedChunkInArrayBuffer, decryptedFileInUint8Array, decryptedFileIndex, itemKey, itemIV, function(err, decryptedChunkSize) {
+                $decryptChunkPromise.done(function() {
+                    chunkIndex++;
+                    downloadedFileProgress = chunkIndex / numberOfChunks * 100;
+                    if (chunkIndex < numberOfChunks)
+                        downloadDecryptAndAssemble();
+                    console.log('Decrypt Chunk:', decryptedFileIndex);
+                    $decryptChunkDeferred = $.Deferred();
+                    $decryptChunkPromise = $decryptChunkDeferred.promise();
+                    decryptChunkInArrayBufferAsync(encryptedChunkInArrayBuffer, decryptedFileInUint8Array, decryptedFileIndex, itemKey, itemIV, function(err, decryptedChunkSize) {
 
-                //         if (err) {
-                //             alert(err);
-                //             $decryptChunkDeferred.reject();
-                //         } else {
-                //             //console.log('decryptedChunkSize', decryptedChunkSize);
-                //             decryptedFileIndex += decryptedChunkSize;
-                //             decryptChunkIndex += 1;
-                //             //console.log(decryptedFileIndex);
-                //             if (decryptChunkIndex === numberOfChunks) {
-                //                 isDownloading = false;
-                //             }
-                //             $decryptChunkDeferred.resolve();
-                //         }
-                //     });
-                // });
+                        if (err) {
+                            alert(err);
+                            $decryptChunkDeferred.reject();
+                        } else {
+                            //console.log('decryptedChunkSize', decryptedChunkSize);
+                            decryptedFileIndex += decryptedChunkSize;
+                            decryptChunkIndex += 1;
+                            //console.log(decryptedFileIndex);
+                            if (decryptChunkIndex === numberOfChunks) {
+                                isDownloading = false;
+                                updatePageStatus(itemId, 'Attatchment');
+                                console.log('____attatchement completed');
+                            }
+                            $decryptChunkDeferred.resolve();
+                        }
+                    });
+                });
             }
             ;
 
@@ -911,6 +920,7 @@ var downloadAttachment = function(id) {
                     fileType = data.fileType;
                     fileSize = data.fileSize;
                     numberOfChunks = parseInt(data.numberOfChunks);
+                    console.log('numberOfChunks', numberOfChunks);
                     decryptedFileInUint8Array = new Uint8Array(fileSize);
                     decryptedFileIndex = 0;
                 }

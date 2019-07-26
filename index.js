@@ -19,7 +19,7 @@ let thread_win;
 global.sqliteDB = db;
 global.loginUserId = loginUserId;
 global.logMesage = [];
-global.isDev = false;
+global.isDev = true;
 
 function createWindow () {
   // Create the browser window.
@@ -153,6 +153,9 @@ function initSQLiteDB()
       sql = "CREATE TABLE IF NOT EXISTS 'info' (" +
               "id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, jsonData BLOB); ";
       db.run(sql);
+
+      sql = "UPDATE pages SET isDownload = -1 WHERE isDownload = 0";
+      db.run(sql);      
       
     });
 
