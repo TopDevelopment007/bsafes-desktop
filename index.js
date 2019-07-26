@@ -18,6 +18,8 @@ let thread_win;
 
 global.sqliteDB = db;
 global.loginUserId = loginUserId;
+global.logMesage = [];
+global.isDev = false;
 
 function createWindow () {
   // Create the browser window.
@@ -66,16 +68,14 @@ function createWindow () {
   }))
   thread_win.webContents.openDevTools();
   
-
-  var isDev = true;
-  //var isDev = false;
-  if (isDev) {    
+  if (global.isDev) {    
     // Open the DevTools.
     win.webContents.openDevTools();
   } else {
     win.setMenu(null);
     thread_win.hide();
   }
+
 }
 
 function initSQLiteDB()
@@ -203,8 +203,16 @@ ipcMain.on('show-message', (event, msg) => {
     if (win) {
         win.webContents.send('show-message', msg);
     }
-
 })
+
 ipcMain.on( "setMyGlobalVariable", ( event, myGlobalVariableValue ) => {
   global.loginUserId = myGlobalVariableValue;
+} );
+
+ipcMain.on( "sendDownloadMessage", ( event, message ) => {
+  global.logMesage.push(message);  
+} );
+
+ipcMain.on( "clearDownloadLogs", ( event, message ) => {
+  //global.logMesage = [];
 } );

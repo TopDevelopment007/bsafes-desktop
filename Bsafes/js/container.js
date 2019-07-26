@@ -486,7 +486,7 @@ function loadPage(){
         $(element).closest('.resultItem').find('.itemActionBtn').addClass('disabled');
       });
 			$(".itemsToolbar").removeClass('hidden');
-      $(".btnDownload").removeClass('hidden');
+      $("#btnDownload").removeClass('hidden');
     } else {
       selectedItemList = [];
 			$('#showSearchInputBtn').removeClass('hidden');
@@ -494,7 +494,7 @@ function loadPage(){
       $('.itemActionBtn').addClass('hidden');
       $('.addItemBtn').removeClass('hidden');
 			$(".itemsToolbar").addClass('hidden');
-      $(".btnDownload").addClass('hidden');
+      $("#btnDownload").addClass('hidden');
     }
   };
 
@@ -517,7 +517,7 @@ function loadPage(){
     return false;
   });
 
-  $(".btnDownload").click(function(e) {
+  $("#btnDownload").click(function(e) {
     //$(e.target).trigger('blur');
     e.preventDefault();
     downloadSelectedItems(selectedItemList);

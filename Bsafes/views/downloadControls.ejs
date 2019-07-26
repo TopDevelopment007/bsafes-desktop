@@ -1,1 +1,35 @@
-<div class="btnEditor btn btnFloatingWrite btnFloating btnDownload hidden" id="content"><i class="fa fa-download fa-2x" aria-hidden="true" id="content"></i></div>
+<div class="btnEditor btn btnFloatingWrite btnFloating  hidden" id="btnDownload"><i class="fa fa-download fa-2x" aria-hidden="true" id="btnDownload"></i></div>
+
+
+<!-- download Modal -->
+<div class="modal fade" id="downloadModal" role="dialog">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-body">
+				<div class="form-group">
+					<span class='spinDownload'></span>
+					<span class='downloadInfo'>Pleas wait for gathering information.</span>
+				</div>
+			</div>
+			
+		</div>
+	</div>
+</div>
+
+<style type="text/css">
+	.modal {
+	  //background: green;
+	  position: absolute;
+	  float: left;
+	  left: 50%;
+	  top: 50%;
+	  transform: translate(-50%, -50%);
+	}
+	.spinDownload {
+		margin-left: 50px;
+		margin-top: 70px;
+	}
+	.downloadInfo {
+		margin-left: 50px;
+	}
+</style>

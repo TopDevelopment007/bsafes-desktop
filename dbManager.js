@@ -156,10 +156,16 @@ function dbSetTotalCountersOfPage(pageId, type, counter)
 		} else if (row == undefined) {
 			console.log('dbSetTotalCountersOfPage', 'err: not find pageId')
 		} else {
-			db.run("UPDATE " + table + " SET " + field + " = ? WHERE id = ?", counter, row.id);
+			db.run("UPDATE " + table + " SET " + field + " = ? WHERE id = ?", [counter, row.id], function(err) {
+			    if (err) {
+			      console.log('err_dbSetTotalCountersOfPage', err.message);
+			  	} 
+			  	console.log('dbSetTotalCountersOfPage', pageId, type, counter);
+		    });
 		}
-		console.log('dbSetTotalCountersOfPage', pageId);
+		//console.log('dbSetTotalCountersOfPage', pageId, type, counter);
 	});
+	
 }
 
 function dbIncreaseDownloadedCountersOfPage(pageId, type, done)
@@ -185,26 +191,88 @@ function dbIncreaseDownloadedCountersOfPage(pageId, type, done)
 	});
 }
 
-function dbupdatePageStatus(pageId, done)
+function dbCheckPageTotalCounters(pageId, done)
 {
 	var table = 'pages';
 	var sql = "SELECT * FROM " + table + " WHERE pageId = ?";
+
 	db.get(sql, [pageId], function(err, row) {
 		if (err) {
-			console.log('dbupdatePageStatus', err)
+			console.log('dbCheckPageTotalCounters', err)
 		} else if (row == undefined) {
-			console.log('dbupdatePageStatus', 'err: not find pageId')
+			console.log('dbCheckPageTotalCounters', 'err: not find pageId', pageId)
 		} else {
-			if ((row.counterContentsImages == row.downloadedContentsImages) &&
-				(row.counterImages == row.downloadedImages) &&
-				(row.counterAttatchments == row.downloadedAttatchments)) {
-
-				db.run("UPDATE " + table + " SET isDownload = 1 WHERE id = ?", row.id);	
+			if ((row.counterContentsImages == -1) || (row.counterVideos == -1)
+				|| (row.counterImages == -1) || (row.counterAttatchments == -1)) {
+				done(false);
+			} else {
 				done(true);
-			}			
+			}
+			
 		}
-		done(false);
-		console.log('dbupdatePageStatus', pageId);
+	});
+
+}
+
+function dbUpdatePageStatus(pageId, done)
+{
+	var table = 'pages';
+	var sql = "SELECT * FROM " + table + " WHERE pageId = ?";
+	var error = null;
+	var isCompleted = false;
+
+	db.get(sql, [pageId], function(err, row) {
+		if (err) {
+			console.log('dbUpdatePageStatus', err)
+			error = err;
+		} else if (row == undefined) {
+			console.log('dbUpdatePageStatus', 'err: not find pageId')
+			error = 'err: not find pageId';
+		} else {
+			if ((row.counterContentsImages > -1) && (row.counterVideos > -1)
+				&& (row.counterImages > -1) && (row.counterAttatchments > -1)) {
+				if ((row.counterContentsImages <= row.downloadedContentsImages) &&
+					(row.counterVideos <= row.downloadedVideos) &&
+					(row.counterImages <= row.downloadedImages) &&
+					(row.counterAttatchments <= row.downloadedAttatchments)) {
+
+					db.run("UPDATE " + table + " SET isDownload = 1 WHERE id = ?", row.id);	
+					isCompleted = true;
+				} else {
+				}	
+			} else {
+				console.log('counterContentsImages', pageId, row.counterContentsImages);
+				console.log('counterVideos', pageId, row.counterVideos);
+				console.log('counterImages', pageId, row.counterImages);
+				console.log('counterAttatchments', pageId, row.counterAttatchments);
+			}
+			
+		}
+		done(error, isCompleted);
+		
+		console.log('dbUpdatePageStatus', pageId);
+	});
+}
+
+function dbUpdatePageStatusWithError(pageId)
+{
+	var table = 'pages';
+	var sql = "SELECT * FROM " + table + " WHERE pageId = ?";
+	var error = null;
+	var isCompleted = false;
+
+	db.get(sql, [pageId], function(err, row) {
+		if (err) {
+			console.log('dbUpdatePageStatusWithError', err)
+			error = err;
+		} else if (row == undefined) {
+			console.log('dbUpdatePageStatusWithError', 'err: not find pageId')
+			error = 'err: not find pageId';
+		} else {
+			db.run("UPDATE " + table + " SET isDownload = -1 WHERE id = ?", row.id);	
+		}
+		
+		console.log('dbUpdatePageStatusWithError', pageId);
 	});
 }
 

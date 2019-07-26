@@ -30,7 +30,8 @@ function loadPage(){
       $(e.target).trigger('blur');
       var isModalVisible = $('#logDownloadItemsModal').is(':visible');
       if (!isModalVisible) {
-          showDownloadItemsModal(currentSpace);
+          //showDownloadItemsModal(currentSpace);
+          showDownloadItemsModal();
       }
 
       return false;
@@ -111,7 +112,7 @@ function loadPage(){
 		return false;
 	});
 
-  $('.btnDownload').click(function(e) {
+  $("#btnDownload").click(function(e) {
     e.preventDefault();
     downloadSelectedItems(selectedTeams);
     return false;
@@ -206,11 +207,11 @@ function loadPage(){
       $checkedItems.each(function(index, element) {
         $(element).closest('.resultItem').find('.itemActionBtn').addClass('disabled');
       });
-      $('.btnDownload').removeClass('hidden');
+      $("#btnDownload").removeClass('hidden');
     } else {
       $('.itemActionBtn').addClass('hidden');
 			$('.addItemBtn').removeClass('hidden');
-      $('.btnDownload').addClass('hidden');
+      $("#btnDownload").addClass('hidden');
     }
 	}
 	

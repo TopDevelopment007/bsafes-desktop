@@ -123,7 +123,7 @@ function loadPage() {
                 $(element).closest('.resultItem').find('.itemActionBtn').addClass('disabled');
             });
             $(".itemsToolbar").removeClass('hidden');
-            $('.btnDownload').removeClass('hidden');
+            $("#btnDownload").removeClass('hidden');
         } else {
             selectedItemList = [];
             $('.itemsActionBtn').addClass('hidden');
@@ -132,7 +132,7 @@ function loadPage() {
                 $('.addItemBtn').removeClass('hidden');
             }
             $(".itemsToolbar").addClass('hidden');
-            $('.btnDownload').addClass('hidden');
+            $("#btnDownload").addClass('hidden');
         }
     };
 
@@ -165,7 +165,7 @@ function loadPage() {
         window.location.href = makeCallNavigate(trashBoxLink);
     });
 
-    $('.btnDownload').click(function(e) {
+    $("#btnDownload").click(function(e) {
         e.preventDefault();
         showDownloadLoadingIn();
         downloadSelectedItems(selectedItemList);

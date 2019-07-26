@@ -2,15 +2,18 @@ var server_addr = 'https://www.openbsafes.com'
 var download_folder_path = 'bsafes_downloads/';
 var forge = require('node-forge');
 var BSON = require('bson');
+var moment = require('moment');
+const fs = require('fs');
+const uuidv1 = require('uuid/v1');
+const { ipcRenderer, remote } = require( "electron" );
 var pki = forge.pki;
 var rsa = forge.pki.rsa;
 var privateKeyPem;
 var arrPage = [];
 var currentPage = null;
-const fs = require('fs');
-const uuidv1 = require('uuid/v1');
-
+var pageName = '';
 var db = null;
+var lastMsg = null;
 
 
 setInterval(interval, 5000);
@@ -27,18 +30,22 @@ function interval()
 		}		
 	}
     console.log('_______arrPage', arrPage.length);
+    console.log('____currentPage', currentPage);
+    console.log('____currentPageName', pageName);
+
 
     if (currentPage == null)
     {
         dbGetDownloadsListFromPages(function(arrPageList){
             arrPage = arrPageList;
             if (arrPageList.length == 0) {
+                saveLog( 'completed' );
                 return;                
             }
 
             currentPage = arrPageList[0];   
-            console.log('currentPage', currentPage);         
-            dbupdatePageStatus(currentPage, function(isCompleted) {
+            console.log('currentPage', currentPage);       
+            dbUpdatePageStatus(currentPage, function(isCompleted) {
                 if (isCompleted) {
                     currentPage = null;
                     return;
@@ -56,6 +63,8 @@ function interval()
 function downloadPage(pageId) 
 {
 	console.log('start downloading...', pageId);
+    //saveLog(pageId + ' start downloading...', true);
+
     dbQueryInfo(server_addr + '/memberAPI/preflight', {
 		sessionResetRequired: false
 	}, function(data, textStatus, jQxhr ){
@@ -63,11 +72,26 @@ function downloadPage(pageId)
 			privateKeyPem = data.privateKey;
 			getPageItem(pageId, data.expandedKey, data.privateKey, data.searchKey, function(err, item) {
                 if (err) {
-                    alert(err);
+                    //alert(err);
+                    console.log('err_downloadPage', pageId);
+                    dbUpdatePageStatusWithError(pageId);
+                    currentPage = null;
                 } else {
-                    console.info('!!!_complete (pageId = )', pageId);
+                    console.info('!!!_complete_downloadPage (pageId = )', pageId);
+                    function waitForPageSettingTotalCounters(itemId)
+                    {
+                        dbCheckPageTotalCounters(itemId, function(isReady) {
+                            if (!isReady) {
+                                setTimeout(waitForPageSettingTotalCounters, 500, itemId );
+                            } else {
+                                checkIsCompletedThenSet(pageId);
+                            }
+                        })
+                    }
+                    waitForPageSettingTotalCounters(pageId);
+                    
                 }
-                currentPage = null;
+                //currentPage = null;
             });
 		}
 	});
@@ -83,8 +107,6 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
         searchKey = thisSearchKey;
         itemId = thisItemId;
     }
-
-
     
     function getPageComments() {
     	var default_size = 100;
@@ -116,7 +138,7 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
             	console.log('err_getPageComments', 'none');
             }
         });
-    }
+    } // end function
     
     var options = {
         itemId: thisItemId
@@ -124,21 +146,14 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
     if (thisVersion) {
         options.oldVersion = thisVersion;
     }
+
     $.post(server_addr + '/memberAPI/getPageItem', options, function(data, textStatus, jQxhr) {
         if (data.status === 'ok') {
         	dbInsertPageContents(server_addr + '/memberAPI/getPageItem', thisItemId, data);
 
             if (data.item) {
-                //postGetItemData(data.item);
                 itemCopy = data.item;
-                // if (!thisVersion) {
-                //     setCurrentVersion(itemCopy.version);
-                // } else {
-                //     setOldVersion(thisVersion);
-                // }
                 isBlankPageItem = false;
-                $('#nextPageBtn, #previousPageBtn').removeClass('hidden');
-                console.log('data.item', data.item);
 
                 var item = data.item;
 
@@ -149,6 +164,7 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                 dbInsertDownloadList(itemContainer);
 
                 function decryptItem(envelopeKey) {
+                    console.log('decryptItem', thisItemId);
                     itemKey = decryptBinaryString(item.keyEnvelope, envelopeKey, item.envelopeIV);
                     itemIV = decryptBinaryString(item.ivEnvelope, envelopeKey, item.ivEnvelopeIV);
                     itemTags = [];
@@ -166,13 +182,7 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                         }
                         $('#tagsInput').tokenfield('setTokens', itemTags);
                     }
-                    ;
-                    // if (!thisVersion) {
-                    //     initializeTagsInput();
-                    // } else {
-                    //     disableTagsInput();
-                    // }
-
+                    
                     $('.container').data('itemId', itemId);
                     $('.container').data('itemKey', itemKey);
                     $('.container').data('itemIV', itemIV);
@@ -190,7 +200,9 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                     } else {
                         $('.froala-editor#title').html('<h2></h2>');
                     }
+                    pageName = titleText;
 
+                    saveLog('< ' + pageName + '> started.');
                     //getAndShowPath(thisItemId, envelopeKey, teamName, titleText);
                     getAndShowPath(thisItemId, envelopeKey, titleText);
                     var item_content = '';
@@ -216,7 +228,11 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                         }
                         downloadContentImageObjects(item_content, thisItemId);
                         handleVideoObjects(item_content, thisItemId);
+                    } else {
+                        dbSetTotalCountersOfPage(itemId, 'ContentsImage', 0);
+                        dbSetTotalCountersOfPage(itemId, 'Video', 0);
                     }
+                    
 
                     if (item.images && item.images.length) {
                         dbSetTotalCountersOfPage(itemId, 'Image', item.images.length);
@@ -299,58 +315,11 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
 												    });
 												});
 
-                                                $.post(server_addr + '/memberAPI/postS3Download', {
-                                                    itemId: itemId,
-                                                    s3Key: s3CommonKey
-                                                }, function(data, textStatus, jQxhr) {
-                                                    if (data.status === 'ok') {
-                                                        var item = data.item;
-                                                        var size = item.size;
-
-                                                        var decryptedImageDataInUint8Array = decryptArrayBuffer(encryptedImageDataInArrayBuffer, itemKey, itemIV);
-                                                        var link = window.URL.createObjectURL(new Blob([decryptedImageDataInUint8Array]), {
-                                                            type: 'image/jpeg'
-                                                        });
-                                                        done(null);
-                                                        // $img = $('<img class="img-responsive" src="' + link + '"' + '>');
-                                                        // $img.on('load', function(e) {
-                                                        //     var $thisImg = $(e.target);
-                                                        //     $thisImg.data('width', $thisImg[0].width);
-                                                        //     $thisImg.data('height', $thisImg[0].height);
-
-                                                        //     var $imagePanel = $('.imagePanelTemplate').clone().removeClass('imagePanelTemplate hidden').addClass('imagePanel');
-                                                        //     $imagePanel.find('.deleteImageBtn').attr('data-key', s3CommonKey).on('click', pageControlFunctions.deleteImageOnPage);
-                                                        //     $imagePanel.attr('id', id);
-                                                        //     $imagePanel.find('.image').append($thisImg);
-                                                        //     var encryptedWords = $downloadImage.data('words');
-                                                        //     if (encryptedWords) {
-                                                        //         var encodedWords = decryptBinaryString(encryptedWords, itemKey, itemIV);
-                                                        //         var words = forge.util.decodeUtf8(encodedWords);
-                                                        //         words = DOMPurify.sanitize(words);
-                                                        //         $imagePanel.find('.froala-editor').html(words);
-                                                        //     }
-                                                        //     $imagePanel.find('.btnWrite').on('click', handleBtnWriteClicked);
-                                                        //     $imagePanel.find('.insertImages').on('change', insertImages);
-                                                        //     $downloadImage.before($imagePanel);
-                                                        //     $downloadImage.remove();
-
-                                                        //     done(null);
-                                                        // });
-                                                        // $img.on('click', function(e) {
-                                                        //     $thisImg = $(e.target);
-                                                        //     $thisImagePanel = $thisImg.closest('.imagePanel');
-                                                        //     var index = $thisImagePanel.attr('id');
-                                                        //     var startingIndex = parseInt(index.split('-')[1]);
-                                                        //     showGallery(startingIndex);
-                                                        // });
-                                                    }
-                                                }, 'json');
+                                                done(null);
 
                                             }
-                                            ;
-
+                                            
                                             xhr.send();
-                                            //currentImageDownloadXhr = xhr;
 
                                         }
                                     }, 'json');
@@ -425,6 +394,7 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                     teamId = itemSpaceParts.join(':');
                     getTeamData(teamId, function(err, team) {
                         if (err) {
+                            done(err, item);
                         } else {
                             var teamKeyEnvelope = team.teamKeyEnvelope;
                             teamKey = pkiDecrypt(teamKeyEnvelope);
@@ -517,10 +487,10 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                 }
             }
         } else {
-            console.log('err4');
-            done(data.err)
+            console.log('err4_getPageItem', data.error, thisItemId);
+            done(data.error, null)
         }
-        //hideLoadingPage();
+        
     }, 'json');
 }
 
@@ -534,9 +504,9 @@ function getTeamData(teamId, done) {
             dbInsertDownloadList(teamId);
 			done(null, data.team);      		
 		} else {
-            console.log('err4');
-			done(data.err, null);
-      		console.log('err:(getTeamData)', data.err);
+            console.log('err4_getTeamData');
+			done(data.error, null);
+      		console.log('err:(getTeamData)', data.error);
 		}
 	}, 'json');
 };	
@@ -881,38 +851,38 @@ var downloadAttachment = function(id) {
 				    });
 				});
 
-                var encryptedChunkInArrayBuffer = this.response;
-                isDownloaded = true;
-                console.log('isDownloaded:', isDownloaded);
+                // var encryptedChunkInArrayBuffer = this.response;
+                // isDownloaded = true;
+                // console.log('isDownloaded:', isDownloaded);
 
-                console.log('downloaded chunk size:', encryptedChunkInArrayBuffer.byteLength);
-                console.log('Chunk downloaded:', chunkIndex);
+                // console.log('downloaded chunk size:', encryptedChunkInArrayBuffer.byteLength);
+                // console.log('Chunk downloaded:', chunkIndex);
 
-                $decryptChunkPromise.done(function() {
-                    chunkIndex++;
-                    downloadedFileProgress = chunkIndex / numberOfChunks * 100;
-                    if (chunkIndex < numberOfChunks)
-                        downloadDecryptAndAssemble();
-                    console.log('Decrypt Chunk:', decryptedFileIndex);
-                    $decryptChunkDeferred = $.Deferred();
-                    $decryptChunkPromise = $decryptChunkDeferred.promise();
-                    decryptChunkInArrayBufferAsync(encryptedChunkInArrayBuffer, decryptedFileInUint8Array, decryptedFileIndex, itemKey, itemIV, function(err, decryptedChunkSize) {
+                // $decryptChunkPromise.done(function() {
+                //     chunkIndex++;
+                //     downloadedFileProgress = chunkIndex / numberOfChunks * 100;
+                //     if (chunkIndex < numberOfChunks)
+                //         downloadDecryptAndAssemble();
+                //     console.log('Decrypt Chunk:', decryptedFileIndex);
+                //     $decryptChunkDeferred = $.Deferred();
+                //     $decryptChunkPromise = $decryptChunkDeferred.promise();
+                //     decryptChunkInArrayBufferAsync(encryptedChunkInArrayBuffer, decryptedFileInUint8Array, decryptedFileIndex, itemKey, itemIV, function(err, decryptedChunkSize) {
 
-                        if (err) {
-                            alert(err);
-                            $decryptChunkDeferred.reject();
-                        } else {
-                            //console.log('decryptedChunkSize', decryptedChunkSize);
-                            decryptedFileIndex += decryptedChunkSize;
-                            decryptChunkIndex += 1;
-                            //console.log(decryptedFileIndex);
-                            if (decryptChunkIndex === numberOfChunks) {
-                                isDownloading = false;
-                            }
-                            $decryptChunkDeferred.resolve();
-                        }
-                    });
-                });
+                //         if (err) {
+                //             alert(err);
+                //             $decryptChunkDeferred.reject();
+                //         } else {
+                //             //console.log('decryptedChunkSize', decryptedChunkSize);
+                //             decryptedFileIndex += decryptedChunkSize;
+                //             decryptChunkIndex += 1;
+                //             //console.log(decryptedFileIndex);
+                //             if (decryptChunkIndex === numberOfChunks) {
+                //                 isDownloading = false;
+                //             }
+                //             $decryptChunkDeferred.resolve();
+                //         }
+                //     });
+                // });
             }
             ;
 
@@ -962,11 +932,40 @@ var downloadAttachment = function(id) {
 function updatePageStatus(pageId, field)
 {
     dbIncreaseDownloadedCountersOfPage(pageId, field, function(){
-        dbupdatePageStatus(pageId, function(isCompleted) {
-            if (isCompleted) {
-                //arrPage.splice( arrPage.indexOf(pageId), 1 );
-                currentPage = null;
-            }
-        });
+        checkIsCompletedThenSet(pageId);      
     });
+}
+
+function checkIsCompletedThenSet(pageId)
+{
+    console.log('__checkIsCompletedThenSet', pageId);
+    dbUpdatePageStatus(pageId, function(err, isCompleted) {
+        if ( (!err) && (isCompleted) ){
+            console.info('!!!_complete_checkIsCompletedThenSet (pageId = )', pageId);
+            saveLog('< ' + pageName + ' > finished.');
+            currentPage = null;
+        }
+    });
+}
+
+function saveLog(message, isDevMsg=false)
+{
+    var logMesage;
+    var isDev;
+    if ((lastMsg == message)) {
+        return;
+    }
+
+    if (require('electron').remote != undefined) {
+        isDev = require('electron').remote.getGlobal('isDev');
+        //if ( (isDev) || (!isDevMsg) ) 
+        {
+            var letter = {};
+            letter.logTime = moment().format('YYYY-MM-DD hh:mm');
+            letter.message = message;
+            ipcRenderer.send( "sendDownloadMessage", letter );
+            lastMsg = message;
+        }
+        //console.log('logMesage', require('electron').remote.getGlobal('logMesage'));
+    } 
 }

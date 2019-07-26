@@ -1174,32 +1174,40 @@ function displayContainers(containers, total, mode) {
 	}
 }
 
-function showDownloadItemsModal(thisSpace) {
+function showDownloadItemsModal() {
   $('#logDownloadItemsModal').modal('show');
 
-  // var $moveItemsPathItem = $('.moveItemsPathItemTemplate').clone().removeClass('moveItemsPathItemTemplate hidden').addClass('moveItemsPathItem');
-  // $moveItemsPathItem.data("itemId", 'currentTargetContainer');
-  // $moveItemsPathItem.data("itemTitle", 'currentTargetContainerName');
-  // $moveItemsPathItem.find('a').text('itemTitle');
+  //$('.modal-body').empty();
+  // dbGetDownloadsItemsFromLogs({from : 0, size: 20}, function(data) {
+  //   if(data.status === 'ok') {
+  //     var hits = data.hits.hits;
 
-  // $('.moveItemsPathItemsList').append($moveItemsPathItem);
+  //     hits.forEach(function(item) {
+  //       itemLogTime = item._source.logTime;
+  //       itemName = item._source.teamName;
+  //       var $moveItemsPathItem = $('.moveItemsPathRow').clone().removeClass('moveItemsPathRow hidden').addClass('moveItemsPathItem');
+  //       var htmlstr = itemLogTime + '     ' + itemName;
+  //       $moveItemsPathItem.find('a').text(htmlstr);
+  //       $('.modal-body').append($moveItemsPathItem);
+  //     })
+  //   }
+  // })
+  function displayLogMesaage()
+  {
+    $('.modal-body').empty();
+    var logs = require('electron').remote.getGlobal('logMesage');
+    console.log('logs', logs.length);
+    logs.reverse().forEach(function(logMsg) {
+      var $moveItemsPathItem = $('.moveItemsPathRow').clone().removeClass('moveItemsPathRow hidden').addClass('moveItemsPathItem');
+      var htmlstr = logMsg.logTime + '     ' + logMsg.message;
+      $moveItemsPathItem.find('a').text(htmlstr);
+      $('.modal-body').append($moveItemsPathItem);
+    })  
 
-  //showLoading();
-  $('.modal-body').empty();
-  dbGetDownloadsItemsFromLogs({from : 0, size: 20}, function(data) {
-    if(data.status === 'ok') {
-      var hits = data.hits.hits;
-
-      hits.forEach(function(item) {
-        itemLogTime = item._source.logTime;
-        itemName = item._source.teamName;
-        var $moveItemsPathItem = $('.moveItemsPathRow').clone().removeClass('moveItemsPathRow hidden').addClass('moveItemsPathItem');
-        var htmlstr = itemLogTime + '     ' + itemName;
-        $moveItemsPathItem.find('a').text(htmlstr);
-        $('.modal-body').append($moveItemsPathItem);
-      })
-    }
-  })
+    setTimeout(displayLogMesaage, 2000);
+  }
+  
+  displayLogMesaage();
 
 }
 

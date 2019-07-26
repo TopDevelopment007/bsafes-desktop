@@ -206,7 +206,7 @@
 
   function showDownloadLoadingIn()
   {
-    $(".btnDownload").LoadingOverlay("show", {
+    $("#btnDownload").LoadingOverlay("show", {
       image       : "",
       fontawesome : "fa fa-circle-o-notch fa-spin",
       maxSize     : "38px", 
@@ -216,7 +216,8 @@
   }
 
   function hideDownloadLoadingIn() {
-    $(".btnDownload").LoadingOverlay("hide");
+    $("#btnDownload").LoadingOverlay("hide");
+    //$(".spinDownload").LoadingOverlay("hide");    
   };
 
   function showLoading() {
@@ -1462,6 +1463,8 @@ function positionItemNavigationControls() {
 function downloadSelectedItems(selectedItems)
 {
   dbAddDownloadsItemsInLogs(selectedItems);
+  var ipcRenderer = require( "electron" ).ipcRenderer;
+  ipcRenderer.send( "clearDownloadLogs", null );
 
   var arrList = [];
   for(var i=0; i<selectedItems.length; i++) {
@@ -1470,6 +1473,7 @@ function downloadSelectedItems(selectedItems)
 
   downloadItemByItemID(arrList, function() {
       hideDownloadLoadingIn();
+      //$('#downloadModal').modal('hide');
   });
 }
 

@@ -1,18 +1,18 @@
-# BSafes-Deskop
-Electron desktop app for BSafes.
+# BSages-Deskop
+Minimal application demonstrating how to create tabs in Electron.
 
 Install dependencies:
 
 ```
-npm install
+yarn
 ```
 
-Run app:
+Run demo:
 
 ```
-npm start start
+yarn run start
 ```
 
 Check out source code for details.
 
-
+Read accompanied article here: http://electron.rocks/implementing-tabs-in-electron/
