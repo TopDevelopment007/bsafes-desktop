@@ -19,7 +19,7 @@ let thread_win;
 global.sqliteDB = db;
 global.loginUserId = loginUserId;
 global.logMesage = [];
-global.isDev = true;
+global.isDev = false;
 
 function createWindow () {
   // Create the browser window.
