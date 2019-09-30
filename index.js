@@ -119,6 +119,7 @@ function initSQLiteDB()
                 " counterContentsImages INTEGER DEFAULT -1, downloadedContentsImages INTEGER DEFAULT 0, " + 
                 " counterVideos INTEGER DEFAULT -1, downloadedVideos INTEGER DEFAULT 0, " +
                 " counterImages INTEGER DEFAULT -1, downloadedImages INTEGER DEFAULT 0, " + 
+                " counterOtherTypesContents INTEGER DEFAULT -1, downloadedOtherTypesContents INTEGER DEFAULT 0, " + 
                 " counterAttatchments INTEGER DEFAULT -1, downloadedAttatchments INTEGER DEFAULT 0, isDownload INTEGER DEFAULT 0); ";
       db.run(sql);
 
@@ -140,6 +141,10 @@ function initSQLiteDB()
 
       sql = "CREATE TABLE IF NOT EXISTS 'pageImages' (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, pageId TEXT, s3Key TEXT, file_name TEXT, jsonData BLOB); ";
+      db.run(sql);
+
+      sql = "CREATE TABLE IF NOT EXISTS 'pageOtherTypesContentFiles' (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, pageId TEXT, s3Key TEXT, file_name TEXT); ";
       db.run(sql);
 
       sql = "CREATE TABLE IF NOT EXISTS 'itemPath' (" +

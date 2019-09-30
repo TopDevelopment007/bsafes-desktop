@@ -83,6 +83,8 @@ function loadPage() {
         goGetItemContents(itemCopy.container);
     });
 
+    prepareSkeletonScreen();
+
     bSafesPreflight(function(err, key, thisPublicKey, thisPrivateKey, thisSearchKey) {
         if (err) {
             alert(err);

@@ -148,6 +148,7 @@ function dbSetTotalCountersOfPage(pageId, type, counter)
 	else if (type == 'Video') field = 'counterVideos';
 	else if (type == 'Image') field = 'counterImages';
 	else if (type == 'Attatchment') field = 'counterAttatchments';
+	else if (type == 'OtherTypesContent') field = 'counterOtherTypesContents';
 
 	var sql = "SELECT id FROM " + table + " WHERE pageId = ?";
 	db.get(sql, [pageId], function(err, row) {
@@ -176,6 +177,7 @@ function dbIncreaseDownloadedCountersOfPage(pageId, type, done)
 	else if (type == 'Video') field = 'downloadedVideos';
 	else if (type == 'Image') field = 'downloadedImages';
 	else if (type == 'Attatchment') field = 'downloadedAttatchments';
+	else if (type == 'OtherTypesContent') field = 'downloadedOtherTypesContents';
 
 	var sql = "SELECT id FROM " + table + " WHERE pageId = ?";
 	db.get(sql, [pageId], function(err, row) {
@@ -203,7 +205,7 @@ function dbCheckPageTotalCounters(pageId, done)
 			console.log('dbCheckPageTotalCounters', 'err: not find pageId', pageId)
 		} else {
 			if ((row.counterContentsImages == -1) || (row.counterVideos == -1)
-				|| (row.counterImages == -1) || (row.counterAttatchments == -1)) {
+				|| (row.counterImages == -1) || (row.counterAttatchments == -1) || (row.counterOtherTypesContents == -1)) {
 				done(false);
 			} else {
 				done(true);
@@ -230,10 +232,11 @@ function dbUpdatePageStatus(pageId, done)
 			error = 'err: not find pageId';
 		} else {
 			if ((row.counterContentsImages > -1) && (row.counterVideos > -1)
-				&& (row.counterImages > -1) && (row.counterAttatchments > -1)) {
+				&& (row.counterImages > -1) && (row.counterAttatchments > -1) && (row.counterOtherTypesContents > -1)) {
 				if ((row.counterContentsImages <= row.downloadedContentsImages) &&
 					(row.counterVideos <= row.downloadedVideos) &&
 					(row.counterImages <= row.downloadedImages) &&
+					(row.counterOtherTypesContents <= row.downloadedOtherTypesContents) &&
 					(row.counterAttatchments <= row.downloadedAttatchments)) {
 
 					db.run("UPDATE " + table + " SET isDownload = 1 WHERE id = ?", row.id);	
@@ -295,6 +298,42 @@ function dbInsertPageContents(url, pageId, data) // edi_ok
 	});
 }
 
+function dbInsertPageOtherTypesContentFiles(url, pageId, s3Key, file_name) // edi_ok
+{
+	//db = remote.getGlobal('sqliteDB');
+	var table = 'pageOtherTypesContentFiles';
+
+	var sql = "SELECT id FROM " + table + " WHERE url = ? AND pageId = ? AND s3Key = ?";
+	db.get(sql, [url, pageId, s3Key], function(err, row) {
+		if (err) {
+			console.log('dbInsertPageOtherTypesContent', err);
+		} else if (row == undefined) {
+			db.run("INSERT INTO " + table + " (url, pageId, s3Key, file_name) VALUES (?, ?, ?, ?)", url, pageId, s3Key, file_name);				
+		} else {
+			db.run("UPDATE " + table + " SET file_name = ? WHERE id = ?", file_name, row.id);
+		}
+		console.log('dbInsertPageOtherTypesContent', pageId);
+	});
+}
+
+function dbQueryFileInPageOtherTypesContentFiles(url, pageId, s3Key, fn) // edi_ok
+{
+	//db = remote.getGlobal('sqliteDB');
+	var table = 'pageOtherTypesContentFiles';
+
+	var sql = "SELECT file_name FROM " + table + " WHERE pageId = ? AND s3Key = ?";
+	db.get(sql, [pageId, s3Key], function(err, row) {
+		if (err) {
+			console.log('dbQueryFileInPageOtherTypesContent', err);
+		} else if (row == undefined) {
+			console.log('dbQueryFileInPageOtherTypesContent', 'can not find file');
+		} else {
+			fn(row.file_name);
+		}
+		console.log('dbQueryFileInPageOtherTypesContent', pageId);
+	});
+}
+
 function dbInsertPageContentsFiles(url, pageId, s3Key, file_name) // edi_ok
 {
 	//db = remote.getGlobal('sqliteDB');
@@ -303,7 +342,7 @@ function dbInsertPageContentsFiles(url, pageId, s3Key, file_name) // edi_ok
 	var sql = "SELECT id FROM " + table + " WHERE url = ? AND pageId = ? AND s3Key = ?";
 	db.get(sql, [url, pageId, s3Key], function(err, row) {
 		if (err) {
-			console.log('dbInsertPageContents', err);
+			console.log('dbInsertPageContentsFiles', err);
 		} else if (row == undefined) {
 			db.run("INSERT INTO " + table + " (url, pageId, s3Key, file_name) VALUES (?, ?, ?, ?)", url, pageId, s3Key, file_name);				
 		} else {

@@ -37,8 +37,46 @@ var pkiDecrypt;
 var setIsATeamItem;
 
 var currentImageDownloadXhr = null;
+var addr_images = 'http://localhost:8000/stylesheets/images/';
+addr_images = __dirname + '/../../images/';
+var svgLock = addr_images + 'lock.svg';
+var svgLen = addr_images + 'len.svg';
+var pngLen = addr_images + 'pngLen.png';
+var statusIsLockOrLen;
+var encrypted_buffer;
+
+var editorContentsStatus;
+var lastContent;
+var flgIsLoadingFromLocalStorageForWrite = false;
+var contentsFromServer = null;
+var pageLocalStorageKey = null;
+
+var html_selectContentType = '<a href="" class="selectContentType"> Write, Draw, Spreadsheet, Doc, Diagram, etc </a>';
+
+var pageContentType = null;
+var constContentTypeWrite = 'contentType#Write';
+var constContentTypeDraw = 'contentType#Draw';
+var constContentTypeSpreadsheet = 'contentType#Spreadsheet';
+var constContentTypeDoc = 'contentType#Doc';
+var constContentTypeMxGraph = 'contentType#MxGraph';
+
+var syncfusionKey;
+var spreedsheetKey;
+
+// library object.
+var lc; // literallycanvas
+var spreadsheet; // spreedsheet
+var suncfusion_container; // doc
+var mxGraphUI = null;
+
+var iconSpreadsheet = addr_images + 'spreadSheet.jpg';
+var iconDoc = addr_images + 'docIcon.jpg';
+var iconDiagram = addr_images + 'diagram.jpg';
+
 var download_folder_path = 'bsafes_downloads/';
 const fs = require('fs');
+
+var library_path = __dirname + '/../../';
 
 // --- Page Control Functions ---
 var pageControlFunctions = {
@@ -2561,7 +2599,20 @@ function cleanPageItem() {
     $('.imagePanel').remove();
     $('.attachment').remove();
     $('.comment').remove();
-    $('.imageBtnRow').removeClass('hidden')
+    $('.imageBtnRow').removeClass('hidden');
+
+    $('.btnWrite').remove();
+
+    $('.contentsWrapper').remove();
+    $('.contentContainer').remove();
+    $('.btnFloatingCanvasSave').remove();
+    $('.btnFloatingMinimize').remove();
+    $('.templateOtherTypesStatusAndProgress').remove();
+    $('.templateOtherTypesUploadProgress').remove();
+    $('.widgetIcon').remove();
+    $('.selectContentType').remove();
+    $('.btnWrite.editControl#content').removeClass('hidden');
+    $('.btnWrite.btnEditor#content').removeClass('hidden');
 }
 
 function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey, done, thisVersion) {
@@ -2671,12 +2722,27 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                                 var encryptedTag = encryptedTags[i];
                                 var encodedTag = decryptBinaryString(encryptedTag, itemKey, itemIV);
                                 var tag = forge.util.decodeUtf8(encodedTag);
-                                itemTags.push(tag);
+                                //itemTags.push(tag);
+                                if (tag == constContentTypeWrite) {
+                                    pageContentType = tag;
+                                } else if (tag == constContentTypeDraw) {
+                                    pageContentType = tag;
+                                } else if (tag == constContentTypeSpreadsheet) {
+                                    pageContentType = tag;
+                                } else if (tag == constContentTypeDoc) {
+                                    pageContentType = tag;
+                                } else if (tag == constContentTypeMxGraph) {
+                                    pageContentType = tag;
+                                } else {
+                                    itemTags.push(tag);
+                                }
                             } catch (err) {
                                 alert(err);
                             }
                         }
                         $('#tagsInput').tokenfield('setTokens', itemTags);
+                    } else {
+                        pageContentType = constContentTypeWrite;
                     }
                     ;
                     if (!thisVersion) {
@@ -2719,7 +2785,14 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                                 }
                             });
                             content = DOMPurify.sanitize(content);
-                            $('.froala-editor#content').html(content);
+                            //$('.froala-editor#content').html(content);
+                            if ( content && (pageContentType == null) ) { // old case...
+                                pageContentType = constContentTypeWrite;
+                            }
+                            console.log('load_pageContentType = ', pageContentType);
+                            console.log('load_content = ', content);
+
+                            $('.froala-editor#content').removeClass('loading');
                         } catch (err) {
                             alert(err);
                         }
@@ -2959,6 +3032,13 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                     } else {
                         disableEditControls();
                     }
+
+                    if ($('.contentContainer').length > 0) {
+                        //$('.contentContainer').remove();
+                        $('.contentContainer').addClass('hidden');
+                    }
+                    initContentView(content);
+
                 }
                 if (itemSpace.substring(0, 1) === 'u') {
                     $('.navbarTeamName').text("Yours");
@@ -3085,4 +3165,870 @@ function initializePageControls() {
     initializeEditorButtons();
     initializeImageButton();
     initializeAttachButton();
+}
+
+////////
+
+function showCanvasLoadingPage(){            
+    $(".froala-editor").LoadingOverlay("show", {
+        image: "",
+        fontawesome: "fa fa-circle-o-notch fa-spin",
+        maxSize: "38px",
+        minSize: "36px",
+        background: "rgba(255, 255, 255, 0.0)"
+    });
+}
+
+function hideCanvasLoadingPage() {
+    $(".froala-editor").LoadingOverlay("hide");
+};
+
+function addSelectContentTypeModal()
+{
+    var htmlSelectContentTypeModal = `
+        <div class="modal fade in" id="selectContentTypeModal" tabindex="-1" role="dialog" aria-labelledby="selectContentTypeModal" aria-hidden="true" style="display: none; padding-right: 17px;">
+            <div class="modal-dialog">
+                <div class="modal-content" style="overflow: hidden;">
+                    <div class="modal-header">
+                        <button type="button" class="close" id="closeSelectContentTypeModal" data-dismiss="modal" aria-hidden="true">×</button>
+                        <h4 class="modal-title" id="moveItemsModalLabel">Please Select a Type</h4>
+                    </div>
+                    <div class="modal-body" style="max-height: 336px; overflow-y: auto;">
+                        
+                        <div class="list-group containersList">
+                            <a href="#" class="list-group-item contentTypeItem contentTypeWrite">
+                                <em class="fontSize18Px">Write</em>
+                            </a>
+                            <a href="#" class="list-group-item contentTypeItem contentTypeDraw">
+                                <em class="fontSize18Px">Draw</em>
+                            </a>
+                            <a href="#" class="list-group-item contentTypeItem contentTypeSpreadsheet">
+                                <em class="fontSize18Px">Spreadsheet</em>
+                            </a>
+                            <a href="#" class="list-group-item contentTypeItem contentTypeDoc">
+                                <em class="fontSize18Px">Doc</em>
+                            </a>
+                            <a href="#" class="list-group-item contentTypeItem contentTypeMxGraph">
+                                <em class="fontSize18Px">Diagram</em>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            <!-- /.modal-content -->
+            </div>
+        <!-- /.modal-dialog -->
+        </div>
+    `;
+
+    $(htmlSelectContentTypeModal).appendTo('body');
+
+    $('.contentTypeItem').click(function(e) {    
+        e.preventDefault();    
+
+        var $contentTypeItem = $(e.target);
+        if (e.target.tagName == 'EM') {
+            $contentTypeItem = $(e.target.parentNode);
+        }
+
+        if ($contentTypeItem.hasClass('contentTypeWrite')) {
+            pageContentType = constContentTypeWrite;
+            //$('.btnWrite.editControl#content').trigger("click");
+        } else if ($contentTypeItem.hasClass('contentTypeDraw')) {
+            pageContentType = constContentTypeDraw;
+        } else if ($contentTypeItem.hasClass('contentTypeSpreadsheet')) {
+            pageContentType = constContentTypeSpreadsheet;
+        } else if ($contentTypeItem.hasClass('contentTypeDoc')) {
+            pageContentType = constContentTypeDoc;
+        } else if ($contentTypeItem.hasClass('contentTypeMxGraph')) {
+            pageContentType = constContentTypeMxGraph;
+        } else {
+            alert('Select the correct type.');
+            return;
+        }
+
+        $('#selectContentTypeModal').modal('hide');
+        $('.selectContentType').addClass('hidden');
+
+        console.log('clicked the type: ' + pageContentType);
+        initContentView(null);    
+        return;
+        showCanvasLoadingPage();
+        loadLibrayJsCss(pageContentType, function() {
+            // if ($.inArray(pageContentType, [constContentTypeSpreadsheet, constContentTypeDoc, constContentTypeMxGraph]) > -1) {
+            //     $('.widgetIcon').trigger('click');
+            // }
+            loadDataInContentView(null);
+            hideCanvasLoadingPage();
+            console.log('loaded library.');
+        });
+    })
+    
+}
+
+//addSelectContentTypeModal();
+
+function addTemplateOtherTypesStatusAndProgress()
+{
+    var html_tmp = `<div class="templateOtherTypesStatusAndProgress">
+                        <div class="uploadText downloadText"></div>
+                        <div class="progress progress-striped active marginTop20Px marginBottom0Px">
+                            <div class="sceneControl progress-bar width0Percent"></div>
+                        </div>
+                    </div>
+    `;
+
+    $('.btnWrite.editControl#content').parent().after(html_tmp);
+    $tmp = $('.templateOtherTypesStatusAndProgress');
+
+    return($tmp);
+}
+
+function addTemplateOtherTypesUploadProgress()
+{
+    var html_tmp = `<div class="templateOtherTypesUploadProgress hidden" style="position: fixed;
+                    display: block; bottom: 20px; width: 60%; left: 20%; z-index: 10000;">
+                        <div class="progress progress-striped active marginTop20Px marginBottom0Px">
+                            <div class="sceneControl progress-bar width0Percent"></div>
+                        </div>
+                    </div>
+    `;
+
+    $('.contentsWrapper').append(html_tmp);
+    
+    $tmp = $('.templateOtherTypesUploadProgress');
+
+    return($tmp);
+}
+
+function loadLibrayJsCss(content_type, done)
+{
+    if ($('.contentContainer').length > 0) {
+        done(null);
+        return;
+    }
+
+    if ((content_type == null) || (content_type == constContentTypeWrite)) {
+        done(null);
+        return;
+    }
+
+    function loadCSS(href) 
+    {
+        var cssLink = $("<link>");
+        $("head").append(cssLink);
+        cssLink.attr({
+            rel:  "stylesheet",
+            type: "text/css",
+            href: library_path + href
+        });
+    };
+
+    function loadJS(jsFile, done)
+    {
+        $(function (d, s, id) {
+            'use strict';
+
+            var js, fjs = d.getElementsByTagName(s)[0];
+            js = d.createElement(s);
+            js.onload = function() {
+              done();
+            };
+            js.src = library_path + jsFile;
+            js.setAttribute("crossorigin", "anonymous");
+            fjs.parentNode.insertBefore(js, fjs);
+
+        }(document, 'script', 'forge'));    
+    }
+    //addContentSaveButton();
+
+    function addContentWidget()
+    {
+        // content widget
+        if (content_type == constContentTypeDraw) {
+            $('.pageRow.editorRow').append('<div class="contentContainer" style="margin-left:10px; margin-right:10px;"></div>');
+            var html_tmp = `<div class="templateOtherTypesUploadProgress hidden" >
+                                <div class="progress progress-striped active marginLeft10Px marginRight10Px">
+                                    <div class="sceneControl progress-bar width0Percent"></div>
+                                </div>
+                            </div>
+            `;
+
+            $('.contentContainer').after(html_tmp);
+            return;
+        } else { // fullscreen
+            $('body').append('<div class="contentsWrapper"><div class="contentContainer"></div></div>');
+            var html_tmp = `<div class="templateOtherTypesUploadProgress hidden" style="position: fixed;
+                            display: block; bottom: 20px; width: 60%; left: 20%; z-index: 10000;">
+                                <div class="progress progress-striped active marginTop20Px marginBottom0Px">
+                                    <div class="sceneControl progress-bar width0Percent"></div>
+                                </div>
+                            </div>
+            `;
+
+            $('.contentsWrapper').append(html_tmp);
+            //addTemplateOtherTypesUploadProgress();
+        }            
+    }
+
+    addContentWidget();
+
+    function addIconAndButtons()
+    {
+        // process edit button...
+        if (content_type == constContentTypeWrite) {                
+        } else {
+            $('.btnWrite.editControl#content').addClass('hidden');
+            $('.btnWrite.btnEditor#content').addClass('hidden');
+        }
+
+        // content icon
+        var icon_src = null;
+        if (content_type == constContentTypeSpreadsheet) {
+            icon_src = iconSpreadsheet;
+        } else if (content_type == constContentTypeDoc) {
+            icon_src = iconDoc;
+        } else if (content_type == constContentTypeMxGraph) {
+            icon_src = iconDiagram;
+        }
+
+        if (icon_src) {
+            $('.pageRow.editorRow').append('<div class="widgetIcon text-center"></div>');
+            $('<img />', {
+                src: icon_src,
+                width:'200px'
+            }).appendTo($('.widgetIcon').empty());            
+
+            $('.widgetIcon').click(function(e) {
+                e.preventDefault();    
+                //noScroll();
+                window.addEventListener('scroll', noScroll);
+
+                $('.contentContainer').removeClass('hidden');
+                $('.btnMinimize').removeClass('hidden');
+                $('.btnContentSave').removeClass('hidden');
+
+                $('.contentContainer').css({
+                    'display': 'block',
+                    'z-index': '9999',
+                    'position': 'fixed',
+                    'width': '100%',
+                    'height': '100%',
+                    'top': '0',
+                    'right': '0',
+                    'left': '0',
+                    'bottom': '0',
+                    'overflow': 'auto',
+                    'margin-left': '10px'
+                });
+
+                if (content_type == constContentTypeSpreadsheet) {
+                    $("#spreadsheet").data("kendoSpreadsheet").resize();
+                }
+            });
+        }
+
+        // content minimize button
+        if (icon_src) {
+            var htmlButton = `
+                <div class="btnEditor btn btnFloatingMinimize btnFloating btnMinimize" style="">
+                    <i class="fa fa-times fa-2x" aria-hidden="true"></i>
+                </div>
+            `;
+            $('body').after( htmlButton );
+            $('.btnMinimize').click(function(e) {
+                e.preventDefault();    
+                $('.btnMinimize').addClass('hidden');
+                $('.btnContentSave').addClass('hidden');
+                $('.contentContainer').addClass('hidden');
+                window.removeEventListener('scroll', noScroll);
+
+                if (pageContentType == constContentTypeMxGraph) {
+                    mxEvent.removeListener(window, 'scroll', mxGraphUI.scrollHandler);    
+                }
+            });
+        }
+
+        // conent save button
+        var htmlButton = `
+            <div class="btnEditor btn btnFloatingCanvasSave btnFloating btnContentSave" style="">
+                <i class="fa fa-check fa-2x" aria-hidden="true"></i>
+            </div>
+        `;
+        //$('body').after( htmlButton );    
+        //$('.btnFloatingCanvasSave').css('right', $('.btnFloatingWrite').css('right'));
+        if ($.inArray(pageContentType, [null, constContentTypeWrite, constContentTypeDraw]) > -1) {
+            $('.btnFloatingCanvasSave').css('right', $('.btnFloatingWrite').css('right'));
+        } else {
+            $('.btnFloatingCanvasSave').css('right', "20px");
+        }
+
+        $( ".btnContentSave" ).attr( "disabled", "disabled" );
+        if (isOldVersion()) {
+            //$( ".btnContentSave" ).attr( "disabled", "disabled" );
+        } else {
+            $('.btnContentSave').click(function(e) {
+                e.preventDefault();                                    
+                saveOtherTypesContent();                
+            });
+        }
+        
+    }
+
+    if (content_type == constContentTypeDraw) {
+        
+        loadCSS('/javascripts/literallycanvas/css/literallycanvas.css');
+
+        loadJS("/javascripts/literallycanvas/js/react-with-addons.js", function() {
+            loadJS("/javascripts/literallycanvas/js/react-dom.js", function() {
+                loadJS("/javascripts/literallycanvas/js/literallycanvas.js", function() {
+                    //console.log('literallycanvas library is loaded...');
+                    $( ".contentContainer" ).attr('id', 'literallycanvas');
+                    lc = LC.init(
+                        document.getElementsByClassName('contentContainer')[0], 
+                            {imageURLPrefix: library_path.replace(/\\/g, '/') + '/javascripts/literallycanvas/img',
+                            backgroundColor: 'whitesmoke'}
+                    );
+                    //lc.loadSnapshotJSON('{"shapes":[],"colors":{"primary":"#000","secondary":"#fff","background":"black"}}');
+                    addIconAndButtons();
+                    done(null);
+                });
+            });
+        });
+    } else if (content_type == constContentTypeSpreadsheet) {
+        spreedsheetKey = itemId + 'SpreedsheetContent';
+
+        loadCSS('/javascripts/kendo/css/kendo.common-material.min.css');
+        loadCSS('/javascripts/kendo/css/kendo.rtl.min.css');
+        loadCSS('/javascripts/kendo/css/kendo.material.min.css');
+        loadCSS('/javascripts/kendo/css/kendo.material.mobile.min.css');
+        loadCSS('/javascripts/kendo/css/kendo.examples.css');
+        //loadCSS('http://localhost:8000/javascripts/kendo/css/kendo.examples.css');
+
+        loadJS("/javascripts/kendo/js/jszip.min.js", function() {
+            loadJS("/javascripts/kendo/js/kendo.all.min.js", function() {
+                
+                // $('.contentContainer').append('<div id="spreadsheet"></div>');
+                // $('#spreadsheet').css('width', '100%');
+                // $('#spreadsheet').css('height', '100%');
+                // $("#spreadsheet").kendoSpreadsheet({change: onSpreadsheetChange});
+                // spreadsheet = $("#spreadsheet").data("kendoSpreadsheet");
+                // spreadsheet.resize();
+
+                // timerSaveSpreedsheet();
+                // function onSpreadsheetChange(arg) {
+                //     console.log('change_event(spreedsheet)', arg);
+                //     timerSaveSpreedsheet();                
+                // }
+
+                addIconAndButtons();
+                done(null);
+            });
+        });                
+    } else if (content_type == constContentTypeDoc) {
+        
+        syncfusionKey = itemId + 'SyncfusionWordContent';
+
+        var template = `                
+            <div id="waiting-popup"></div>
+            <div class="control-section">
+                <title>Essential JS 2 - DocumentEditor</title>
+                <div id="panel" style="height: 100%;">
+                    <div id="documenteditor_titlebar" class="e-de-ctn-title"></div>
+                    <div id="documenteditor_container_body" style="display: flex;position:relative; height:100%">
+                        <div id="syncfusion-container" style="width: 100%; height: 100%;"></div>
+                    </div>
+                </div>
+            </div>    
+        `;
+
+        $(".contentContainer").css("border", "1px solid red;");
+        $(".contentContainer").append(template);
+
+        loadCSS('/javascripts/syncfusion/css/material.css');                
+        loadCSS('/javascripts/syncfusion/css/docEditor.css');
+
+        loadJS("/javascripts/syncfusion/js/ej2.min.js", function() {
+            loadJS("/javascripts/syncfusion/js/docEditor.js", function() {
+            //loadJS("http://localhost:8000/javascripts/syncfusion/js/docEditor.js", function() {
+                $('.contentContainer').attr('id', 'syncfusion-documenteditor');
+                // suncfusion_container = loadSyncfusionWordContent(null);
+                // getSyncfusionWordContent();
+
+                // suncfusion_container.contentChange = function () { 
+                //     console.log('change_event_syncfusion');
+                //     getSyncfusionWordContent();
+                // }
+
+                addIconAndButtons();
+                done(null);                    
+            });
+        });
+    } else if (content_type == constContentTypeMxGraph) {
+        $('.contentContainer').addClass('geEditor');
+        $('.contentContainer').attr('id', 'editor-ui-container');
+        mxRoot = library_path + '/javascripts/';
+
+        loadCSS('/javascripts/grapheditor/styles/grapheditor.css');
+
+        loadJS('/javascripts/grapheditor/grapheditorOptions.js', function() {
+        //loadJS('http://localhost:8000/javascripts/grapheditor/grapheditorOptions.js', function() {
+        loadJS('/javascripts/grapheditor/js/Init.js', function() {
+        loadJS('/javascripts/grapheditor/deflate/pako.min.js', function() {
+        loadJS('/javascripts/grapheditor/deflate/base64.js', function() {
+        loadJS('/javascripts/grapheditor/jscolor/jscolor.js', function() {
+        loadJS('/javascripts/grapheditor/sanitizer/sanitizer.min.js', function() {
+        loadJS('/javascripts/grapheditor/mxClient/mxClient.js', function() {
+        //loadJS('http://localhost:8000/javascripts/grapheditor/mxClient/mxClient.js', function() {
+        loadJS('/javascripts/grapheditor/js/EditorUi.js', function() {
+        //loadJS('http://localhost:8000/javascripts/grapheditor/js/Editor.js', function() {
+        loadJS('/javascripts/grapheditor/js/Editor.js', function() {
+        loadJS('/javascripts/grapheditor/js/Sidebar.js', function() {
+        loadJS('/javascripts/grapheditor/js/Graph.js', function() {
+        loadJS('/javascripts/grapheditor/js/Format.js', function() {
+        loadJS('/javascripts/grapheditor/js/Shapes.js', function() {
+        loadJS('/javascripts/grapheditor/js/Actions.js', function() {
+        loadJS('/javascripts/grapheditor/js/Menus.js', function() {
+        //loadJS('http://localhost:8000/javascripts/grapheditor/js/Toolbar.js', function() {
+        loadJS('/javascripts/grapheditor/js/Toolbar.js', function() {
+            loadJS('/javascripts/grapheditor/js/Dialogs.js', function() {
+                //loadJS('/javascripts/grapheditor/index.js', function() {
+                    addIconAndButtons();                        
+                    done(null);
+                //});
+            });
+        });
+        });
+        });
+        });
+        });
+        });
+        });
+        });
+        });
+        });
+        });
+        });
+        });
+        });
+        });
+        });
+    }
+}
+
+function isOldVersion()
+{
+    var isOld = false;
+
+    if ((oldVersion != undefined) && (oldVersion < currentVersion)) {
+        isOld = true;
+    }
+
+    return isOld;
+}
+
+function noScroll() {
+    $(window).scrollTop(0);
+}
+
+function timerSaveSpreedsheet()
+{
+    spreadsheet
+    .saveJSON()
+    .then(function(data){
+        var json = JSON.stringify(data, null, 2);
+        localStorage.setItem(spreedsheetKey, json);
+        //setTimeout(timerSaveSpreedsheet, 3000); 
+    });
+}
+
+function loadDataInContentView(contentJSON) {
+    if (pageContentType == constContentTypeWrite) {
+        if (contentJSON != null) {
+            $('.froala-editor#content').html(contentJSON);    
+            downloadContentImageObjects();
+            handleVideoObjects();    
+
+            if (flgIsLoadingFromLocalStorageForWrite) {
+                $('.btnWrite.editControl#content').trigger( "click" );    
+            }    
+        }    
+
+    } else if (pageContentType == constContentTypeDraw) {            
+        if (contentJSON != null)
+        {
+            lc.loadSnapshot(JSON.parse(contentJSON));
+        }
+        var unsubscribe = lc.on('drawingChange', function(arguments) {
+            saveContentInLocalStorage();
+        });
+    } else if (pageContentType == constContentTypeSpreadsheet) {    
+        $('#spreadsheet').remove();
+        $('.contentContainer').append('<div id="spreadsheet"></div>');
+        $('#spreadsheet').css('width', '99%');
+        $('#spreadsheet').css('height', '99%');
+        $("#spreadsheet").kendoSpreadsheet({change: onSpreadsheetChange});
+        spreadsheet = $("#spreadsheet").data("kendoSpreadsheet");
+        //spreadsheet.resize();                                
+
+        if (contentJSON != null) {
+            spreadsheet.fromJSON(JSON.parse(contentJSON));                    
+            //spreadsheet.resize();
+        } 
+
+        function onSpreadsheetChange(arg) {
+            spreadsheet
+            .saveJSON()
+            .then(function(data){
+                var json = JSON.stringify(data, null, 2);
+                localStorage.setItem(spreedsheetKey, json);
+                saveContentInLocalStorage();
+            });
+        }
+
+        // trigger fullscreen...
+        $('.widgetIcon').trigger('click');
+        //hideLoadingPage();
+    } else if (pageContentType == constContentTypeDoc) {    
+        
+        suncfusion_container = loadSyncfusionWordContent(contentJSON);
+        suncfusion_container.contentChange = function () { 
+            console.log('change_event_syncfusion');
+            suncfusion_container.documentEditor.saveAsBlob('Sfdt').then(function (sfdtBlob) { 
+                var fileReader = new FileReader(); 
+                fileReader.onload = function (e) { 
+                    // Get Json string here 
+                    var sfdtText = fileReader.result; 
+                    // This string can send to server for saving it in database 
+                    localStorage.setItem(syncfusionKey, sfdtText);
+                    saveContentInLocalStorage();                
+                } 
+                fileReader.readAsText(sfdtBlob); 
+            }); 
+        }
+
+        $('.widgetIcon').trigger('click');
+        //hideLoadingPage();
+    } else if (pageContentType == constContentTypeMxGraph) {
+        
+        function loadMxGraphContent() {
+            if (mxGraphUI == null) {
+                setTimeout(loadMxGraphContent, 500);
+            } else {
+                window.onbeforeunload = null;
+                //var doc = mxUtils.parseXml($.parseXML(contentJSON));
+                if (contentJSON != null) {
+                    var doc = mxUtils.parseXml(contentJSON);
+                    mxGraphUI.editor.setGraphXml(doc.documentElement);
+                }
+
+                mxGraphUI.editor.graph.getModel().addListener(mxEvent.CHANGE, function() {
+                    console.log('change_event_mxGraph');
+                    saveContentInLocalStorage();
+                });
+                //mxClient.IS_IOS = false;
+
+            }
+        }
+        mxGraphUI = null;
+        var editorUiInit = EditorUi.prototype.init;
+
+        EditorUi.prototype.init = function()
+        {
+            editorUiInit.apply(this, arguments);
+        };
+
+        mxResources.loadDefaultBundle = false;
+        var bundle = mxResources.getDefaultBundle(RESOURCE_BASE, mxLanguage) ||
+            mxResources.getSpecialBundle(RESOURCE_BASE, mxLanguage);
+        mxUtils.getAll([bundle, STYLE_PATH + '/default.xml'], function(xhr)
+          {
+            // Adds bundle text to resources
+            mxResources.parse(xhr[0].getText());
+
+            // Configures the default graph theme
+            var themes = new Object();
+            themes[Graph.prototype.defaultThemeName] = xhr[1].getDocumentElement();
+
+            // Main
+            mxGraphUI = new EditorUi(new Editor(urlParams['chrome'] == '0', themes), document.getElementById("editor-ui-container"));
+          }, function()
+          {
+            document.body.innerHTML = '<center style="margin-top:10%;">Error loading resource files. Please check browser console.</center>';
+          });
+
+        loadMxGraphContent();                    
+         
+        $('.widgetIcon').trigger('click');
+        //hideLoadingPage();
+    }
+}
+
+function initContentView(contentFromeServer)
+{
+    var pageLocalStorageContent = null;
+
+    var content = null;
+    $downloadContent = null;
+
+    console.log('starting_initContentView');
+
+    showCanvasLoadingPage();
+
+    // check localstorage content
+    function getKeyContentFromLocalStorage() {
+        if (localStorage.getItem(itemId + constContentTypeWrite)) {
+            pageLocalStorageKey = itemId + constContentTypeWrite;
+        } else if (localStorage.getItem(itemId + constContentTypeDraw)) {
+            pageLocalStorageKey = itemId + constContentTypeDraw;
+        } else if (localStorage.getItem(itemId + constContentTypeSpreadsheet)) {
+            pageLocalStorageKey = itemId + constContentTypeSpreadsheet;
+        } else if (localStorage.getItem(itemId + constContentTypeDoc)) {
+            pageLocalStorageKey = itemId + constContentTypeDoc;
+        } else if (localStorage.getItem(itemId + constContentTypeMxGraph)) {
+            pageLocalStorageKey = itemId + constContentTypeMxGraph;
+        } 
+
+        if (pageLocalStorageKey != null) {
+            // found LocalStorage item...
+            pageLocalStorageContent = localStorage.getItem(pageLocalStorageKey);
+            //console.log('pageLocalStorageContent = ', pageLocalStorageContent);
+        }
+    }
+
+    getKeyContentFromLocalStorage();
+    
+    // next get contents        
+    if ( (pageContentType == null) && (pageLocalStorageContent == null) )  {
+        addSelectContentTypeView();    
+        hideCanvasLoadingPage();
+    } else {
+        //s3Key = contentFromeServer;
+
+        startGettingContent(function(err) {    
+            if ($downloadContent) $downloadContent.remove();
+            console.log('finish_startGettingContent');
+
+            if (err) {
+                hideCanvasLoadingPage();
+                console.log(err);
+                alert(err);
+            } else {                    
+                var content_data = content;
+                var isLocalStorage;
+                //console.log('currentVersion = ', currentVersion);
+                //console.log('oldVersion = ', oldVersion);
+
+                if (oldVersion == '1') {
+                    $('.widgetIcon').addClass('hidden');
+                } else {
+                    $('.widgetIcon').removeClass('hidden');
+                }
+                
+                if (isOldVersion()) {
+                    isLocalStorage = false;
+                } else {
+                    isLocalStorage = isLoadFromLocalStorage();
+                }
+
+                if (isLocalStorage) {
+                    content_data = pageLocalStorageContent;
+                    if (pageContentType == constContentTypeWrite) {
+                        flgIsLoadingFromLocalStorageForWrite = true;
+                    }
+                } 
+
+                loadLibrayJsCss(pageContentType, function(err) {      
+                    if (pageContentType == null) {
+                        addSelectContentTypeView();
+                    } else {
+                        loadDataInContentView(content_data);
+                        $('.contentContainer').removeClass('hidden');    
+                    }
+                    
+                    hideCanvasLoadingPage();
+                }); 
+                
+            }
+        });
+    }
+
+    function startGettingContent(doneGetting) {
+
+        function getWriteTypesContent(done) {
+            content = contentFromeServer;
+            contentsFromServer = contentFromeServer;
+            done(null);
+        }
+
+        function downloadOtherTypesContent(done) {
+            $downloadContent = addTemplateOtherTypesStatusAndProgress();
+            $downloadContent.find('.downloadText').text("Downloading");
+            $downloadContent.find('.progress-bar').css('width', '0%');                
+            // var id = $downloadImage.attr('id');
+            // var s3CommonKey = $downloadImage.data('s3Key');
+            //var s3Key = s3CommonKey + "_gallery";
+            var s3Key = contentFromeServer;
+            console.log('download_s3Key = ', s3Key);
+
+            if (s3Key == null) {
+                done(null); // this is version 1...
+                return;
+            }
+
+            //$.post(server_addr + '/memberAPI/preS3Download', {
+            dbQueryFileInPageOtherTypesContentFiles(server_addr + '/memberAPI/preS3Download', itemId, s3Key
+            , function(file_name) {
+                console.log('call_preS3Download = ', data.status);
+                if (data.status === 'ok') {
+                    var signedURL = data.signedURL;
+                    //console.log('signedURL = ', signedURL);
+                    var path = download_folder_path + file_name;
+                    fs.stat(path, function(error, stats) {
+                        fs.open(path, "r", function(error, fd) {
+                            var buffer = new Buffer(stats.size);
+                            fs.read(fd, buffer, 0, buffer.length, null, function(error, bytesRead, buffer) {
+                                function toArrayBuffer(myBuf) {
+                                   var myBuffer = new ArrayBuffer(myBuf.length);
+                                   var res = new Uint8Array(myBuffer);
+                                   for (var i = 0; i < myBuf.length; ++i) {
+                                      res[i] = myBuf[i];
+                                   }
+                                   return myBuffer;
+                                }
+
+                                $downloadContent.find('.downloadText').text("Decrypting");
+
+                                //var encryptedContentDataInArrayBuffer = this.response;
+                                var encryptedContentDataInArrayBuffer = toArrayBuffer(buffer);
+                                {
+                                    var decryptedContentDataInUint8Array = decryptArrayBuffer(encryptedContentDataInArrayBuffer, itemKey, itemIV);
+                                    function ab2str(buf) {
+                                        //return String.fromCharCode.apply(null, new Uint8Array(buf));
+                                        var str = new TextDecoder("utf-8").decode(buf);
+                                        return str;
+                                    }
+                                    var arraybufferContent = decryptedContentDataInUint8Array;
+                                    arraybufferContent = ab2str(arraybufferContent);
+                                    content = arraybufferContent;
+                                    //console.log('decryptedContentDataInUint8Array = ', decryptedContentDataInUint8Array);
+                                    //console.log('arraybufferContent=', arraybufferContent);
+                                    done(null);
+                                }
+                            });
+                        });
+                    });
+
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('GET', signedURL, true);
+                    xhr.responseType = 'arraybuffer';
+
+                    xhr.addEventListener("progress", function(evt) {
+                        if (evt.lengthComputable) {
+                            var percentComplete = evt.loaded / evt.total * 100;
+                            //$downloadImage.find('.progress-bar').css('width', percentComplete + '%');
+                            $downloadContent.find('.progress-bar').css('width', percentComplete + '%');
+                            //console.log('xhr_download progress = ', percentComplete + '%');
+                        }
+                    }, false);
+
+                    xhr.onload = function(e) {
+                        $downloadContent.find('.downloadText').text("Decrypting");
+                        // $downloadImage.find('.downloadText').text("Decrypting");
+                        // currentImageDownloadXhr = null;
+                        var encryptedContentDataInArrayBuffer = this.response;
+                        $.post('/memberAPI/postS3Download', {
+                            itemId: itemId,
+                            s3Key: s3Key
+                        }, function(data, textStatus, jQxhr) {
+                            console.log('call_postS3Download = ', data.status);
+                            if (data.status === 'ok') {
+                                var item = data.item;
+                                var size = item.size;
+
+                                var decryptedContentDataInUint8Array = decryptArrayBuffer(encryptedContentDataInArrayBuffer, itemKey, itemIV);
+                                function ab2str(buf) {
+                                    //return String.fromCharCode.apply(null, new Uint8Array(buf));
+                                    var str = new TextDecoder("utf-8").decode(buf);
+                                    return str;
+                                }
+                                var arraybufferContent = decryptedContentDataInUint8Array;
+                                arraybufferContent = ab2str(arraybufferContent);
+                                content = arraybufferContent;
+                                //console.log('decryptedContentDataInUint8Array = ', decryptedContentDataInUint8Array);
+                                //console.log('arraybufferContent=', arraybufferContent);
+                                done(null);
+                            }
+                        }, 'json');
+
+                    };
+
+                    xhr.onerror = function (e) {
+                        alert('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
+                        //console.log('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
+                    };
+
+                    //xhr.send();
+                    //currentImageDownloadXhr = xhr;
+
+                }
+            }, 'json');
+
+        };
+
+        // var doneDownloadingOtherTypesContent = function(err) {
+        //     if (err) {
+        //         console.log(err);
+        //         done(err);
+        //     } else {                    
+        //         done(null);                    
+        //     }
+        // };
+        
+        if ( (contentFromeServer == null) || (pageContentType == null) ){
+            doneGetting(null);
+        } else if (pageContentType == constContentTypeWrite) {
+            getWriteTypesContent(doneGetting);
+        } else {
+            //downloadOtherTypesContent(doneDownloadingOtherTypesContent);
+            downloadOtherTypesContent(doneGetting);
+        }
+    }
+
+    function isLoadFromLocalStorage() {
+        if (pageLocalStorageContent == null) {
+            return false;
+        }
+        console.log('isLoadFromLocalStorage(pageLocalStorageKey)',pageLocalStorageKey);
+        console.log('isLoadFromLocalStorage(itemId)',itemId);
+        if ( (pageContentType == null) || (pageLocalStorageKey == itemId + pageContentType) ) {
+            if (content != pageLocalStorageContent) {
+                if (confirm('Found item contents in Local Storage.\nWould you like to recover the content from local storage?')) {
+                    pageContentType = pageLocalStorageKey.replace(itemId, '');
+                    console.log('pageContentType from localstorage', pageContentType);
+                    return true;
+                } else {
+                    localStorage.removeItem(pageLocalStorageKey);
+                }
+            }            
+        }
+        return false;
+    }
+
+
+
+    //backupContentsInLocalStorage();                
+}
+
+function saveContentInLocalStorage() {
+    return;
+    if (pageContentType == null) {
+        pageLocalStorageKey = itemId + constContentTypeWrite;
+    } else {
+        pageLocalStorageKey = itemId + pageContentType;    
+    }
+    
+    var current_contents = getCurrentContent();
+    localStorage.setItem(pageLocalStorageKey, current_contents);
+    console.log('pageLocalStorageKey, current_contents', pageLocalStorageKey, current_contents);
+    $( ".btnContentSave" ).removeAttr( "disabled" );
 }

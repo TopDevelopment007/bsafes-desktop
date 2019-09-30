@@ -15,6 +15,12 @@ var pageName = '';
 var db = null;
 var lastMsg = null;
 
+var pageContentType = null;
+var constContentTypeWrite = 'contentType#Write';
+var constContentTypeDraw = 'contentType#Draw';
+var constContentTypeSpreadsheet = 'contentType#Spreadsheet';
+var constContentTypeDoc = 'contentType#Doc';
+var constContentTypeMxGraph = 'contentType#MxGraph';
 
 setInterval(interval, 5000);
 
@@ -182,12 +188,27 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                                 var encryptedTag = encryptedTags[i];
                                 var encodedTag = decryptBinaryString(encryptedTag, itemKey, itemIV);
                                 var tag = forge.util.decodeUtf8(encodedTag);
-                                itemTags.push(tag);
+                                //itemTags.push(tag);
+                                if (tag == constContentTypeWrite) {
+                                    pageContentType = tag;
+                                } else if (tag == constContentTypeDraw) {
+                                    pageContentType = tag;
+                                } else if (tag == constContentTypeSpreadsheet) {
+                                    pageContentType = tag;
+                                } else if (tag == constContentTypeDoc) {
+                                    pageContentType = tag;
+                                } else if (tag == constContentTypeMxGraph) {
+                                    pageContentType = tag;
+                                } else {
+                                    itemTags.push(tag);
+                                }
                             } catch (err) {
                                 alert(err);
                             }
                         }
-                        $('#tagsInput').tokenfield('setTokens', itemTags);
+                        //$('#tagsInput').tokenfield('setTokens', itemTags);
+                    } else {
+                        pageContentType = constContentTypeWrite;
                     }
                     
                     $('.container').data('itemId', itemId);
@@ -213,10 +234,11 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                     //getAndShowPath(thisItemId, envelopeKey, teamName, titleText);
                     getAndShowPath(thisItemId, envelopeKey, titleText);
                     var item_content = '';
+                    var content = null;
                     if (item.content) {
                         try {
                             var encodedContent = decryptBinaryString(item.content, itemKey, itemIV);
-                            var content = forge.util.decodeUtf8(encodedContent);
+                            content = forge.util.decodeUtf8(encodedContent);
                             DOMPurify.addHook('afterSanitizeAttributes', function(node) {
                                 // set all elements owning target to target=_blank
                                 if ('target'in node) {
@@ -229,12 +251,15 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                             });
                             content = DOMPurify.sanitize(content);
                             item_content = content;
-                            $('.froala-editor#content').html(content);
+                            //$('.froala-editor#content').html(content);
+                            if ( content && (pageContentType == null) ) { // old case...
+                                pageContentType = constContentTypeWrite;
+                            }
                         } catch (err) {
                             alert(err);
                         }
-                        downloadContentImageObjects(item_content, thisItemId);
-                        handleVideoObjects(item_content, thisItemId);
+                        //downloadContentImageObjects(item_content, thisItemId);
+                        //handleVideoObjects(item_content, thisItemId);
                     } else {
                         dbSetTotalCountersOfPage(itemId, 'ContentsImage', 0);
                         dbSetTotalCountersOfPage(itemId, 'Video', 0);
@@ -387,6 +412,7 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                     } else {
                         //disableEditControls();
                     }
+                    initContentView(content);
                 } // end function decryptItem()
 
                 if (itemSpace.substring(0, 1) === 'u') {
@@ -850,6 +876,7 @@ var downloadAttachment = function(id) {
 				    // write the contents of the buffer, from position 0 to the end, to the file descriptor returned in opening our file
 				    fs.write(fd, new Buffer(buffer), 0, buffer.length, null, (err) => {
 				        if (err) throw 'error writing file: ' + err;
+                        console.log('dbInsertPageAttatchment(chunkIndex)', chunkIndex)
 				        dbInsertPageAttatchment(server_addr + '/memberAPI/preS3ChunkDownload', itemId, current_chunkIndex, id, data='', file_name);
                         
 				        fs.close(fd, function() {
@@ -978,4 +1005,235 @@ function saveLog(message, isDevMsg=false)
         }
         //console.log('logMesage', require('electron').remote.getGlobal('logMesage'));
     } 
+}
+
+function initContentView(contentFromeServer)
+{
+    var pageLocalStorageContent = null;
+
+    var content = null;
+    $downloadContent = null;
+
+    console.log('starting_initContentView');
+
+    //showCanvasLoadingPage();
+
+    // check localstorage content
+    function getKeyContentFromLocalStorage() {
+        if (localStorage.getItem(itemId + constContentTypeWrite)) {
+            pageLocalStorageKey = itemId + constContentTypeWrite;
+        } else if (localStorage.getItem(itemId + constContentTypeDraw)) {
+            pageLocalStorageKey = itemId + constContentTypeDraw;
+        } else if (localStorage.getItem(itemId + constContentTypeSpreadsheet)) {
+            pageLocalStorageKey = itemId + constContentTypeSpreadsheet;
+        } else if (localStorage.getItem(itemId + constContentTypeDoc)) {
+            pageLocalStorageKey = itemId + constContentTypeDoc;
+        } else if (localStorage.getItem(itemId + constContentTypeMxGraph)) {
+            pageLocalStorageKey = itemId + constContentTypeMxGraph;
+        } 
+
+        if (pageLocalStorageKey != null) {
+            // found LocalStorage item...
+            pageLocalStorageContent = localStorage.getItem(pageLocalStorageKey);
+            //console.log('pageLocalStorageContent = ', pageLocalStorageContent);
+        }
+    }
+
+    //getKeyContentFromLocalStorage();
+    
+    // next get contents        
+    if ( (pageContentType == null) && (pageLocalStorageContent == null) )  {
+        //addSelectContentTypeView();    
+        //hideCanvasLoadingPage();
+    } else {
+        startGettingContent(function(err) {    
+            //if ($downloadContent) $downloadContent.remove();
+            console.log('finish_startGettingContent');
+
+            if (err) {
+                //hideCanvasLoadingPage();
+                console.log(err);
+                alert(err);
+            } else {                    
+                var content_data = content;
+                var isLocalStorage ;
+                //console.log('currentVersion = ', currentVersion);
+                //console.log('oldVersion = ', oldVersion);
+
+                // if (oldVersion == '1') {
+                //     $('.widgetIcon').addClass('hidden');
+                // } else {
+                //     $('.widgetIcon').removeClass('hidden');
+                // }
+                
+                // if (isOldVersion()) {
+                //     isLocalStorage = false;
+                // } else {
+                //     isLocalStorage = isLoadFromLocalStorage();
+                // }
+
+                // if (isLocalStorage) {
+                //     content_data = pageLocalStorageContent;
+                //     if (pageContentType == constContentTypeWrite) {
+                //         flgIsLoadingFromLocalStorageForWrite = true;
+                //     }
+                // } 
+
+                // loadLibrayJsCss(pageContentType, function(err) {      
+                //     if (pageContentType == null) {
+                //         addSelectContentTypeView();
+                //     } else {
+                //         loadDataInContentView(content_data);
+                //         $('.contentContainer').removeClass('hidden');    
+                //     }
+                    
+                //     hideCanvasLoadingPage();
+                // }); 
+                
+            }
+        });
+    }
+
+    function startGettingContent(doneGetting) {
+
+        function getWriteTypesContent(done) {
+            content = contentFromeServer;
+            contentsFromServer = contentFromeServer;            
+            downloadContentImageObjects(contentFromeServer, itemId);
+            handleVideoObjects(contentFromeServer, itemId);
+            done(null);
+        }
+
+        function downloadOtherTypesContent(done) {
+            // $downloadContent = addTemplateOtherTypesStatusAndProgress();
+            // $downloadContent.find('.downloadText').text("Downloading");
+            // $downloadContent.find('.progress-bar').css('width', '0%');                
+            // var id = $downloadImage.attr('id');
+            // var s3CommonKey = $downloadImage.data('s3Key');
+            //var s3Key = s3CommonKey + "_gallery";
+            var s3Key = contentFromeServer;
+            console.log('download_s3Key = ', s3Key);
+
+            if (s3Key == null) {
+                done(null); // this is version 1...
+                return;
+            }
+
+            $.post(server_addr + '/memberAPI/preS3Download', {
+                itemId: itemId,
+                s3Key: s3Key
+            }, function(data, textStatus, jQxhr) {
+                console.log('call_preS3Download = ', data.status);
+                if (data.status === 'ok') {
+                    var signedURL = data.signedURL;
+                    console.log('signedURL = ', signedURL);
+
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('GET', signedURL, true);
+                    xhr.responseType = 'arraybuffer';
+
+                    // xhr.addEventListener("progress", function(evt) {
+                    //     if (evt.lengthComputable) {
+                    //         var percentComplete = evt.loaded / evt.total * 100;
+                    //         //$downloadImage.find('.progress-bar').css('width', percentComplete + '%');
+                    //         $downloadContent.find('.progress-bar').css('width', percentComplete + '%');
+                    //         //console.log('xhr_download progress = ', percentComplete + '%');
+                    //     }
+                    // }, false);
+
+                    xhr.onload = function(e) {
+                        //$downloadContent.find('.downloadText').text("Decrypting");
+                        // $downloadImage.find('.downloadText').text("Decrypting");
+                        // currentImageDownloadXhr = null;
+                        var buffer = this.response;
+                        var file_name = uuidv1();
+                        fs.open(download_folder_path + file_name, 'w', function(err, fd) {
+                            if (err) {
+                                throw 'could not open file: ' + err;
+                            }
+                            // write the contents of the buffer, from position 0 to the end, to the file descriptor returned in opening our file
+                            fs.write(fd, new Buffer(buffer), 0, buffer.length, null, (err) => {
+                                if (err) throw 'error writing file: ' + err;
+                                dbInsertPageOtherTypesContentFiles(server_addr + '/memberAPI/preS3Download', itemId, s3Key, file_name);
+                                updatePageStatus(itemId, 'OtherTypesContent');
+                                fs.close(fd, function() {
+                                    console.log('wrote the ContentsImage file successfully');
+                                });
+                            });
+                        });
+
+                        var encryptedContentDataInArrayBuffer = this.response;
+                        $.post(server_addr + '/memberAPI/postS3Download', {
+                            itemId: itemId,
+                            s3Key: s3Key
+                        }, function(data, textStatus, jQxhr) {
+                            console.log('call_postS3Download = ', data.status);
+                            if (data.status === 'ok') {
+                                var item = data.item;
+                                var size = item.size;
+
+                                var decryptedContentDataInUint8Array = decryptArrayBuffer(encryptedContentDataInArrayBuffer, itemKey, itemIV);
+                                function ab2str(buf) {
+                                    //return String.fromCharCode.apply(null, new Uint8Array(buf));
+                                    var str = new TextDecoder("utf-8").decode(buf);
+                                    return str;
+                                }
+                                var arraybufferContent = decryptedContentDataInUint8Array;
+                                arraybufferContent = ab2str(arraybufferContent);
+                                content = arraybufferContent;
+                                //console.log('decryptedContentDataInUint8Array = ', decryptedContentDataInUint8Array);
+                                //console.log('arraybufferContent=', arraybufferContent);
+                                done(null);
+                            }
+                        }, 'json');
+
+                    };
+
+                    xhr.onerror = function (e) {
+                        alert('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
+                        //console.log('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
+                    };
+
+                    xhr.send();
+                    //currentImageDownloadXhr = xhr;
+
+                }
+            }, 'json');
+
+        };
+        
+        if ( (contentFromeServer == null) || (pageContentType == null) ){
+            dbSetTotalCountersOfPage(itemId, 'OtherTypesContent', 0);
+            doneGetting(null);
+        } else if (pageContentType == constContentTypeWrite) {
+            dbSetTotalCountersOfPage(itemId, 'OtherTypesContent', 0);
+            getWriteTypesContent(doneGetting);
+        } else {
+            dbSetTotalCountersOfPage(itemId, 'ContentsImage', 0);
+            dbSetTotalCountersOfPage(itemId, 'Video', 0);
+            dbSetTotalCountersOfPage(itemId, 'OtherTypesContent', 1);
+            downloadOtherTypesContent(doneGetting);
+        }
+    }
+
+    function isLoadFromLocalStorage() {
+        if (pageLocalStorageContent == null) {
+            return false;
+        }
+        console.log('isLoadFromLocalStorage(pageLocalStorageKey)',pageLocalStorageKey);
+        console.log('isLoadFromLocalStorage(itemId)',itemId);
+        if ( (pageContentType == null) || (pageLocalStorageKey == itemId + pageContentType) ) {
+            if (content != pageLocalStorageContent) {
+                if (confirm('Found item contents in Local Storage.\nWould you like to recover the content from local storage?')) {
+                    pageContentType = pageLocalStorageKey.replace(itemId, '');
+                    console.log('pageContentType from localstorage', pageContentType);
+                    return true;
+                } else {
+                    localStorage.removeItem(pageLocalStorageKey);
+                }
+            }            
+        }
+        return false;
+    }
+              
 }

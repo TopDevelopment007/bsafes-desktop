@@ -1,3 +1,4 @@
+
 function loadPage(){
 	var pki = forge.pki;
   var rsa = forge.pki.rsa;
@@ -101,7 +102,7 @@ function loadPage(){
 		return false;
 	});
 
-/*** End of creating an team ***/
+  /*** End of creating an team ***/
 
   var handleAddAction = function(e) {
     $addTargetTeam = $(e.target).closest('.resultItem');

@@ -1,7 +1,7 @@
 {
-  "name": "BSages-Deskop",
+  "name": "bsafes-Deskop",
   "version": "1.0.0",
-  "description": "BSages Deskop",
+  "description": "bsafes Deskop",
   "main": "index.js",
   "dependencies": {
     "axios": "^0.19.0",

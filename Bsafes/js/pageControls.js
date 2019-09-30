@@ -37,6 +37,183 @@ var pkiDecrypt;
 var setIsATeamItem;
 
 var currentImageDownloadXhr = null;
+//console.log('__dirname=', __dirname);
+
+var library_path =  __dirname + '/../../libs/';
+library_path = 'https://developer.openbsafes.com';
+
+var addr_images = 'http://localhost:8000/stylesheets/images/';
+addr_images = __dirname + '/../../images/';
+addr_images = library_path + '/images/';
+var svgLock = addr_images + 'lock.svg';
+var svgLen = addr_images + 'len.svg';
+var pngLen = addr_images + 'pngLen.png';
+var statusIsLockOrLen;
+var encrypted_buffer;
+
+var editorContentsStatus;
+var lastContent;
+var flgIsLoadingFromLocalStorageForWrite = false;
+var contentsFromServer = null;
+var pageLocalStorageKey = null;
+
+var html_selectContentType = '<a href="" class="selectContentType"> Write, Draw, Spreadsheet, Doc, Diagram, etc </a>';
+
+var pageContentType = null;
+var constContentTypeWrite = 'contentType#Write';
+var constContentTypeDraw = 'contentType#Draw';
+var constContentTypeSpreadsheet = 'contentType#Spreadsheet';
+var constContentTypeDoc = 'contentType#Doc';
+var constContentTypeMxGraph = 'contentType#MxGraph';
+
+var syncfusionKey;
+var spreedsheetKey;
+
+// library object.
+var lc; // literallycanvas
+var spreadsheet; // spreedsheet
+var mxGraphUI = null;
+
+var iconSpreadsheet = addr_images + 'spreadSheet.jpg';
+var iconDoc = addr_images + 'docIcon.jpg';
+var iconDiagram = addr_images + 'diagram.jpg';
+
+$('.btnFloatingWrite').addClass('hidden');
+
+// Page for skeleton screen
+function prepareSkeletonScreen()
+{
+    $("<style>")
+    .prop("type", "text/css")
+    .html("\
+        @keyframes aniVertical {\
+            0% {\
+                opacity: 0.3;\
+            }\
+            50% {\
+                opacity: 1;\
+            }\
+            100% {\
+                opacity: 0.3;\
+            }\
+        }\
+        .loading {\
+            height: 30px;\
+            border-radius: 20px;\
+            background-color: #E2E2E2;\
+            animation: aniVertical 3s ease;\
+            animation-iteration-count: infinite;\
+            animation-fill-mode: forwards;\
+            opacity: 0;\
+        }\
+        .content-loading {\
+            height: 20px;\
+            margin-top:20px;\
+            background-color: #E2E2E2;\
+            border-radius: 10px;\
+            animation: aniVertical 5s ease;\
+            animation-iteration-count: infinite;\
+            animation-fill-mode: forwards;\
+            opacity: 0;\
+        }")
+    .appendTo("head");
+
+    $('.froala-editor#title').html('');
+    $('.froala-editor#content').html('');
+    $('.commentsSearchResults').html('');
+
+    //$('.froala-editor#title').addClass('loading');
+    $('.froala-editor#content').append( "<div class='content-loading' style='width:100%;'></div>" );
+    $('.froala-editor#content').append( "<div class='content-loading' style='width:70%;'></div>" );
+    $('.froala-editor#content').append( "<div class='content-loading' style='width:80%;'></div>" );
+    $('.froala-editor#content').append( "<div class='content-loading' style='width:60%;'></div>" );
+    $('.froala-editor#content').append( "<div class='content-loading' style='width:90%;'></div>" );
+    $('.commentsSearchResults').addClass('loading col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2');
+}
+
+function Utf8ArrayToStr(array, limit) {
+    var out, i, len, c;
+    var char2, char3;
+
+    out = "";
+    len = array.length;
+    if (len > limit) {
+        len = limit;
+    }
+    i = 0;
+    while(i < len) {
+    c = array[i++];
+    switch(c >> 4)
+    { 
+      case 0: case 1: case 2: case 3: case 4: case 5: case 6: case 7:
+        // 0xxxxxxx
+        out += String.fromCharCode(c);
+        break;
+      case 12: case 13:
+        // 110x xxxx   10xx xxxx
+        char2 = array[i++];
+        out += String.fromCharCode(((c & 0x1F) << 6) | (char2 & 0x3F));
+        break;
+      case 14:
+        // 1110 xxxx  10xx xxxx  10xx xxxx
+        char2 = array[i++];
+        char3 = array[i++];
+        out += String.fromCharCode(((c & 0x0F) << 12) |
+                       ((char2 & 0x3F) << 6) |
+                       ((char3 & 0x3F) << 0));
+        break;
+    }
+    }
+
+    return out;
+}
+
+function clearSkeletonScreen()
+{
+    $('.froala-editor#title').removeClass('loading');
+    $('.froala-editor#content').removeClass( "<div class='content-loading' style='width:100%;'></div>" );
+    $('.froala-editor#content').removeClass( "<div class='content-loading' style='width:70%;'></div>" );
+    $('.froala-editor#content').removeClass( "<div class='content-loading' style='width:80%;'></div>" );
+    $('.froala-editor#content').removeClass( "<div class='content-loading' style='width:60%;'></div>" );
+    $('.froala-editor#content').removeClass( "<div class='content-loading' style='width:90%;'></div>" );
+    $('.commentsSearchResults').removeClass('loading col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2');
+}
+
+// data snippet
+function addSnippet()
+{
+    var modalSnippet = `
+        <div class='modal fade' id='modalSnippet' tabindex='-1' role='dialog' aria-labelledby='moveItemsModalLabel' aria-hidden='true'>
+            <div class='modal-dialog'>
+                <div class='modal-content'>
+                    <div class='modal-header'>
+                        <button type='button' class='close closeLogDownloadItemsModal' data-dismiss='modal' aria-hidden='true'>&times;</button>
+                        <h4 class='modal-title' id='moveItemsModalLabel'>Your Encrypted Data Snippet</h4>
+                        <p>It is what others see without your key. BSafes staffs can't see neither.</p>
+                    </div>
+                    <div class='modal-body' style='padding: 0 20px 20px 20px;'>
+                        <div style='border:1px solid darkgray; border-radius: 5px; padding:10px;'>
+                            <div class='enc_buffer' style='width:100%; overflow: hidden;'>
+                                dgsdgaskldghalsghlkdghjklaglanlknlnoinbnbdfasddgsdga
+                                lsghlkdghjklaglanlknlnoinbnbdfasddgsdgaskldghalsghlkdghjklagl
+                                anlknlnoinbnbdfasddgsdgaskldghalsghlkdghjklaglan
+                                lknlnoinbnbdfasddgsdgaskldghal
+                                sghlkdghjklaglanlknlnoinbnbdfasd
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    $(modalSnippet).appendTo('body');
+}
+
+function modifyPrevnextButton()
+{
+    $('.itemNavigationRow').css('z-index', '1000');
+    $('.turningPageRow').css('z-index', '1000');
+}
 
 // --- Page Control Functions ---
 var pageControlFunctions = {
@@ -2468,11 +2645,23 @@ function cleanPageItem() {
     $('.imagePanel').remove();
     $('.attachment').remove();
     $('.comment').remove();
-    $('.imageBtnRow').removeClass('hidden')
+    $('.imageBtnRow').removeClass('hidden');
+
+    // edi_start
+    $('.contentsWrapper').remove();
+    $('.contentContainer').remove();
+    $('.btnFloatingCanvasSave').remove();
+    $('.btnFloatingMinimize').remove();
+    $('.templateOtherTypesStatusAndProgress').remove();
+    $('.templateOtherTypesUploadProgress').remove();
+    $('.widgetIcon').remove();
+    $('.selectContentType').remove();
 }
 
 function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey, done, thisVersion) {
-    oldVersion = "undefined"
+    pageContentType = null;
+    oldVersion = "undefined";
+
     if (!thisVersion) {
         expandedKey = thisExpandedKey;
         privateKey = thisPrivateKey;
@@ -2480,8 +2669,7 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
         itemId = thisItemId;
     }
 
-    if (currentImageDownloadXhr)
-        currentImageDownloadXhr.abort();
+    if (currentImageDownloadXhr) currentImageDownloadXhr.abort();
     showLoadingPage();
 
     function displayComments(comments) {
@@ -2518,393 +2706,447 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
             content = DOMPurify.sanitize(content);
             $comment.find('.froala-editor').html(content);
             var $commentsSearchResults = $('.commentsSearchResults');
+            
             $commentsSearchResults.append($comment);
         }
-    }
-    ;
+    };
+
     function getPageComments() {
-        $.post(server_addr + '/memberAPI/getPageComments', {        
+        $.post(server_addr + '/memberAPI/getPageComments', {
             itemId: itemId,
             size: 10,
             from: 0
         }, function(data, textStatus, jQxhr) {
-            if (data.status === "ok") {
+            $('.commentsSearchResults').removeClass('loading col-xs-12 col-xs-offset-0 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2');
+            if (data.status === "ok") {                    
                 var total = data.hits.total;
                 var hits = data.hits.hits;
-                if (hits.length)
-                    displayComments(hits);
+                if (hits.length) displayComments(hits);
             }
         });
-    }
-    ;
-    var options = {
-        itemId: itemId
     };
+
+    var options = { itemId: itemId };
     if (thisVersion) {
         options.oldVersion = thisVersion;
     }
-    $.post(server_addr + '/memberAPI/getPageItem', options, function(data, textStatus, jQxhr) {
-        if (data.status === 'ok') {
-            cleanPageItem();
-            initializePageControls();
-            if (data.item) {
-                postGetItemData(data.item);
-                itemCopy = data.item;
-                if (!thisVersion) {
-                    setCurrentVersion(itemCopy.version);
-                } else {
-                    setOldVersion(thisVersion);
-                }
-                isBlankPageItem = false;
-                $('#nextPageBtn, #previousPageBtn').removeClass('hidden');
-                console.log(data.item);
+    $.post(server_addr + '/memberAPI/getPageItem',
+        options,
+        function(data, textStatus, jQxhr) {
+            if (data.status === 'ok') {
+                cleanPageItem();
+                initializePageControls();
+                if (data.item) {
+                    postGetItemData(data.item);
+                    itemCopy = data.item;
+                    if (!thisVersion) {
+                        setCurrentVersion(itemCopy.version);
+                    } else {
+                        setOldVersion(thisVersion);
+                    }
+                    isBlankPageItem = false;
+                    $('#nextPageBtn, #previousPageBtn').removeClass('hidden');
+                    //console.log(data.item);
 
-                var item = data.item;
+                    var item = data.item;
 
-                itemSpace = item.space;
-                itemContainer = item.container;
-                itemPosition = item.position;
+                    itemSpace = item.space;
+                    initCurrentSpace(itemSpace);
+                    itemContainer = item.container;
+                    itemPosition = item.position;
 
-                function decryptItem(envelopeKey) {
-                    itemKey = decryptBinaryString(item.keyEnvelope, envelopeKey, item.envelopeIV);
-                    itemIV = decryptBinaryString(item.ivEnvelope, envelopeKey, item.ivEnvelopeIV);
-                    itemTags = [];
-                    if (item.tags && item.tags.length > 1) {
-                        var encryptedTags = item.tags;
-                        for (var i = 0; i < (item.tags.length - 1); i++) {
+                    function decryptItem(envelopeKey) {
+                        if((item.keyEnvelope === undefined) || (item.envelopeIV === undefined) || (item.ivEnvelope === undefined) || (item.ivEnvelopeIV === undefined)) {
+                            getAndShowPath(itemId, envelopeKey, teamName, "");
+                            done("Error: undefined item key");
+                        }
+                        itemKey = decryptBinaryString(item.keyEnvelope, envelopeKey, item.envelopeIV);
+                        itemIV = decryptBinaryString(item.ivEnvelope, envelopeKey, item.ivEnvelopeIV);
+                        itemTags = [];
+                        if (item.tags && item.tags.length > 1) {
+                            var encryptedTags = item.tags;
+                            for (var i = 0; i < (item.tags.length - 1); i++) {
+                                try {
+                                    var encryptedTag = encryptedTags[i];
+                                    var encodedTag = decryptBinaryString(encryptedTag, itemKey, itemIV);
+                                    var tag = forge.util.decodeUtf8(encodedTag);
+                                    
+                                    if (tag == constContentTypeWrite) {
+                                        pageContentType = tag;
+                                    } else if (tag == constContentTypeDraw) {
+                                        pageContentType = tag;
+                                    } else if (tag == constContentTypeSpreadsheet) {
+                                        pageContentType = tag;
+                                    } else if (tag == constContentTypeDoc) {
+                                        pageContentType = tag;
+                                    } else if (tag == constContentTypeMxGraph) {
+                                        pageContentType = tag;
+                                    } else {
+                                        itemTags.push(tag);
+                                    }
+                                } catch (err) {
+                                    alert(err);
+                                }
+                            }
+                            $('#tagsInput').tokenfield('setTokens', itemTags);
+                            
+                        } else {
+                            pageContentType = constContentTypeWrite;
+                        };
+
+                        // if (pageContentType == null) {
+                        //     pageContentType = constContentTypeWrite;
+                        // }
+                        //pageLocalStorageKey = itemId + pageContentType;
+                        //console.log('pageLocalStorageKey', pageLocalStorageKey);
+
+                        if (!thisVersion) {
+                            initializeTagsInput();
+                        } else {
+                            disableTagsInput();
+                        }
+
+                        $('.container').data('itemId', itemId);
+                        $('.container').data('itemKey', itemKey);
+                        $('.container').data('itemIV', itemIV);
+                        var titleText = "";
+                        if (item.title) {
                             try {
-                                var encryptedTag = encryptedTags[i];
-                                var encodedTag = decryptBinaryString(encryptedTag, itemKey, itemIV);
-                                var tag = forge.util.decodeUtf8(encodedTag);
-                                itemTags.push(tag);
+                                var encodedTitle = decryptBinaryString(item.title, itemKey, itemIV);
+                                title = forge.util.decodeUtf8(encodedTitle);
+                                title = DOMPurify.sanitize(title);
+                                $('.froala-editor#title').html(title);
+                                titleText = document.title = $(title).text();
                             } catch (err) {
                                 alert(err);
                             }
+                        } else {
+                            $('.froala-editor#title').html('<h2></h2>');
                         }
-                        $('#tagsInput').tokenfield('setTokens', itemTags);
-                    }
-                    ;
-                    if (!thisVersion) {
-                        initializeTagsInput();
-                    } else {
-                        disableTagsInput();
-                    }
+                        $('.froala-editor#title').removeClass('loading');
 
-                    $('.container').data('itemId', itemId);
-                    $('.container').data('itemKey', itemKey);
-                    $('.container').data('itemIV', itemIV);
-                    var titleText = "";
-                    if (item.title) {
-                        try {
-                            var encodedTitle = decryptBinaryString(item.title, itemKey, itemIV);
-                            title = forge.util.decodeUtf8(encodedTitle);
-                            title = DOMPurify.sanitize(title);
-                            $('.froala-editor#title').html(title);
-                            titleText = document.title = $(title).text();
-                        } catch (err) {
-                            alert(err);
-                        }
-                    } else {
-                        $('.froala-editor#title').html('<h2></h2>');
-                    }
+                        getAndShowPath(itemId, envelopeKey, teamName, titleText);
 
-                    getAndShowPath(itemId, envelopeKey, teamName, titleText);
-                    if (item.content) {
-                        try {
-                            var encodedContent = decryptBinaryString(item.content, itemKey, itemIV);
-                            var content = forge.util.decodeUtf8(encodedContent);
-                            DOMPurify.addHook('afterSanitizeAttributes', function(node) {
-                                // set all elements owning target to target=_blank
-                                if ('target'in node) {
-                                    node.setAttribute('target', '_blank');
+                        var content = null;
+                        if (item.content) {
+                            try {
+                                var encodedContent = decryptBinaryString(item.content, itemKey, itemIV);
+                                content = forge.util.decodeUtf8(encodedContent);
+                                DOMPurify.addHook('afterSanitizeAttributes', function(node) {
+                                    // set all elements owning target to target=_blank
+                                    if ('target' in node) {
+                                        node.setAttribute('target', '_blank');
+                                    }
+                                    // set non-HTML/MathML links to xlink:show=new
+                                    if (!node.hasAttribute('target') &&
+                                        (node.hasAttribute('xlink:href') ||
+                                            node.hasAttribute('href'))) {
+                                        node.setAttribute('xlink:show', 'new');
+                                    }
+                                });
+                                content = DOMPurify.sanitize(content);
+                                // if (pageContentType != constContentTypeMxGraph) {
+                                //     content = DOMPurify.sanitize(content);    
+                                // }                                    
+                                if ( content && (pageContentType == null) ) { // old case...
+                                    pageContentType = constContentTypeWrite;
                                 }
-                                // set non-HTML/MathML links to xlink:show=new
-                                if (!node.hasAttribute('target') && (node.hasAttribute('xlink:href') || node.hasAttribute('href'))) {
-                                    node.setAttribute('xlink:show', 'new');
-                                }
-                            });
-                            content = DOMPurify.sanitize(content);
-                            $('.froala-editor#content').html(content);
-                        } catch (err) {
-                            alert(err);
-                        }
-                        downloadContentImageObjects();
-                        handleVideoObjects();
-                    }
+                                console.log('load_pageContentType = ', pageContentType);
+                                console.log('load_content = ', content);
 
-                    if (item.images && item.images.length) {
-                        function downloadAndDisplayImages() {
-                            $('.imageBtnRow').addClass('hidden');
+                                $('.froala-editor#content').removeClass('loading');
 
-                            function buildDownloadImagesList() {
-                                var images = item.images;
-                                var $lastElement = $('.imageBtnRow');
-                                for (var i = 0; i < images.length; i++) {
-                                    $downloadImage = $('.downloadImageTemplate').clone().removeClass('downloadImageTemplate hidden').addClass('downloadImage');
-                                    var id = 'index-' + i;
-                                    $downloadImage.attr('id', id);
-                                    var s3Key = images[i].s3Key;
-                                    var words = images[i].words;
-                                    $downloadImage.data('s3Key', s3Key);
-                                    $downloadImage.data('words', words);
-                                    $downloadImage.find('.downloadText').text("");
-                                    $lastElement.after($downloadImage);
-                                    $lastElement = $downloadImage;
-                                }
+                                
+                            } catch (err) {
+                                alert(err);
                             }
-                            ;
-                            function startDownloadingImages(done) {
-                                var $downloadImagesList = $('.downloadImage');
-                                var index = 0;
+                            // downloadContentImageObjects();
+                            // handleVideoObjects();                                   
+                        } 
 
-                                function downloadAnImage(done) {
-                                    $downloadImage = $($downloadImagesList[index]);
-                                    $downloadImage.find('.downloadText').text("Downloading");
-                                    var id = $downloadImage.attr('id');
-                                    var s3CommonKey = $downloadImage.data('s3Key');
-                                    var s3Key = s3CommonKey + "_gallery";
+                        if (item.images && item.images.length) {
+                            function downloadAndDisplayImages() {
+                                $('.imageBtnRow').addClass('hidden');
 
-                                    $.post(server_addr + '/memberAPI/preS3Download', {
-                                        itemId: itemId,
-                                        s3Key: s3Key
-                                    }, function(data, textStatus, jQxhr) {
-                                        if (data.status === 'ok') {
-                                            var signedURL = data.signedURL;
-
-                                            var xhr = new XMLHttpRequest();
-                                            xhr.open('GET', signedURL, true);
-                                            xhr.responseType = 'arraybuffer';
-
-                                            xhr.addEventListener("progress", function(evt) {
-                                                if (evt.lengthComputable) {
-                                                    var percentComplete = evt.loaded / evt.total * 100;
-                                                    $downloadImage.find('.progress-bar').css('width', percentComplete + '%');
-                                                }
-                                            }, false);
-
-                                            xhr.onload = function(e) {
-                                                $downloadImage.find('.downloadText').text("Decrypting");
-                                                currentImageDownloadXhr = null;
-                                                var encryptedImageDataInArrayBuffer = this.response;
-                                                $.post(server_addr + '/memberAPI/postS3Download', {
-                                                    itemId: itemId,
-                                                    s3Key: s3CommonKey
-                                                }, function(data, textStatus, jQxhr) {
-                                                    if (data.status === 'ok') {
-                                                        var item = data.item;
-                                                        var size = item.size;
-
-                                                        var decryptedImageDataInUint8Array = decryptArrayBuffer(encryptedImageDataInArrayBuffer, itemKey, itemIV);
-                                                        var link = window.URL.createObjectURL(new Blob([decryptedImageDataInUint8Array]), {
-                                                            type: 'image/jpeg'
-                                                        });
-                                                        $img = $('<img class="img-responsive" src="' + link + '"' + '>');
-                                                        $img.on('load', function(e) {
-                                                            var $thisImg = $(e.target);
-                                                            $thisImg.data('width', $thisImg[0].width);
-                                                            $thisImg.data('height', $thisImg[0].height);
-
-                                                            var $imagePanel = $('.imagePanelTemplate').clone().removeClass('imagePanelTemplate hidden').addClass('imagePanel');
-                                                            $imagePanel.find('.deleteImageBtn').attr('data-key', s3CommonKey).on('click', pageControlFunctions.deleteImageOnPage);
-                                                            $imagePanel.attr('id', id);
-                                                            $imagePanel.find('.image').append($thisImg);
-                                                            var encryptedWords = $downloadImage.data('words');
-                                                            if (encryptedWords) {
-                                                                var encodedWords = decryptBinaryString(encryptedWords, itemKey, itemIV);
-                                                                var words = forge.util.decodeUtf8(encodedWords);
-                                                                words = DOMPurify.sanitize(words);
-                                                                $imagePanel.find('.froala-editor').html(words);
-                                                            }
-                                                            $imagePanel.find('.btnWrite').on('click', handleBtnWriteClicked);
-                                                            $imagePanel.find('.insertImages').on('change', insertImages);
-                                                            $downloadImage.before($imagePanel);
-                                                            $downloadImage.remove();
-
-                                                            done(null);
-                                                        });
-                                                        $img.on('click', function(e) {
-                                                            $thisImg = $(e.target);
-                                                            $thisImagePanel = $thisImg.closest('.imagePanel');
-                                                            var index = $thisImagePanel.attr('id');
-                                                            var startingIndex = parseInt(index.split('-')[1]);
-                                                            showGallery(startingIndex);
-                                                        });
-                                                    }
-                                                }, 'json');
-
-                                            }
-                                            ;
-
-                                            xhr.send();
-                                            currentImageDownloadXhr = xhr;
-
-                                        }
-                                    }, 'json');
-
-                                }
-                                ;
-                                var doneDownloadingAnImage = function(err) {
-                                    if (err) {
-                                        console.log(err);
-                                        done(err);
-                                    } else {
-                                        index++;
-                                        if (index < $downloadImagesList.length) {
-                                            downloadAnImage(doneDownloadingAnImage);
-                                        } else {
-                                            done(null);
-                                        }
+                                function buildDownloadImagesList() {
+                                    var images = item.images;
+                                    var $lastElement = $('.imageBtnRow');
+                                    for (var i = 0; i < images.length; i++) {
+                                        $downloadImage = $('.downloadImageTemplate').clone().removeClass('downloadImageTemplate hidden').addClass('downloadImage');
+                                        var id = 'index-' + i;
+                                        $downloadImage.attr('id', id);
+                                        var s3Key = images[i].s3Key;
+                                        var words = images[i].words;
+                                        $downloadImage.data('s3Key', s3Key);
+                                        $downloadImage.data('words', words);
+                                        $downloadImage.find('.downloadText').text("");
+                                        $lastElement.after($downloadImage);
+                                        $lastElement = $downloadImage;
                                     }
                                 };
 
-                                downloadAnImage(doneDownloadingAnImage);
-                            }
-                            ;
-                            buildDownloadImagesList();
-                            startDownloadingImages(function(err) {
-                                if (err) {
-                                    console.log(err);
-                                } else {
-                                    $('.imageBtnRow').removeClass('hidden');
-                                }
-                            });
+                                function startDownloadingImages(done) {
+                                    var $downloadImagesList = $('.downloadImage');
+                                    var index = 0;
 
+                                    function downloadAnImage(done) {
+                                        $downloadImage = $($downloadImagesList[index]);
+                                        $downloadImage.find('.downloadText').text("Downloading");
+                                        var id = $downloadImage.attr('id');
+                                        var s3CommonKey = $downloadImage.data('s3Key');
+                                        var s3Key = s3CommonKey + "_gallery";
+
+                                        $.post(server_addr + '/memberAPI/preS3Download', {
+                                            itemId: itemId,
+                                            s3Key: s3Key
+                                        }, function(data, textStatus, jQxhr) {
+                                            if (data.status === 'ok') {
+                                                var signedURL = data.signedURL;
+
+                                                var xhr = new XMLHttpRequest();
+                                                xhr.open('GET', signedURL, true);
+                                                xhr.responseType = 'arraybuffer';
+
+                                                xhr.addEventListener("progress", function(evt) {
+                                                    if (evt.lengthComputable) {
+                                                        var percentComplete = evt.loaded / evt.total * 100;
+                                                        $downloadImage.find('.progress-bar').css('width', percentComplete + '%');
+                                                    }
+                                                }, false);
+
+                                                xhr.onload = function(e) {
+                                                    $downloadImage.find('.downloadText').text("Decrypting");
+                                                    currentImageDownloadXhr = null;
+                                                    var encryptedImageDataInArrayBuffer = this.response;
+                                                    $.post(server_addr + '/memberAPI/postS3Download', {
+                                                        itemId: itemId,
+                                                        s3Key: s3CommonKey
+                                                    }, function(data, textStatus, jQxhr) {
+                                                        if (data.status === 'ok') {
+                                                            var item = data.item;
+                                                            var size = item.size;
+
+                                                            var decryptedImageDataInUint8Array = decryptArrayBuffer(encryptedImageDataInArrayBuffer, itemKey, itemIV);
+                                                            var link = window.URL.createObjectURL(new Blob([decryptedImageDataInUint8Array]), { type: 'image/jpeg' });
+                                                            $img = $('<img class="img-responsive" src="' + link + '"' + '>');
+                                                            $img.on('load', function(e) {
+                                                                var $thisImg = $(e.target);
+                                                                $thisImg.data('width', $thisImg[0].width);
+                                                                $thisImg.data('height', $thisImg[0].height);
+
+                                                                var $imagePanel = $('.imagePanelTemplate').clone().removeClass('imagePanelTemplate hidden').addClass('imagePanel');
+                                                                $imagePanel.find('.deleteImageBtn').attr('data-key', s3CommonKey).on('click', pageControlFunctions.deleteImageOnPage);
+                                                                $imagePanel.attr('id', id);
+                                                                $imagePanel.find('.image').append($thisImg);
+                                                                var encryptedWords = $downloadImage.data('words');
+                                                                if (encryptedWords) {
+                                                                    var encodedWords = decryptBinaryString(encryptedWords, itemKey, itemIV);
+                                                                    var words = forge.util.decodeUtf8(encodedWords);
+                                                                    words = DOMPurify.sanitize(words);
+                                                                    $imagePanel.find('.froala-editor').html(words);
+                                                                }
+                                                                $imagePanel.find('.btnWrite').on('click', handleBtnWriteClicked);
+                                                                $imagePanel.find('.insertImages').on('change', insertImages);
+                                                                $downloadImage.before($imagePanel);
+                                                                $downloadImage.remove();
+
+                                                                done(null);
+                                                            });
+                                                            $img.on('click', function(e) {
+                                                                $thisImg = $(e.target);
+                                                                $thisImagePanel = $thisImg.closest('.imagePanel');
+                                                                var index = $thisImagePanel.attr('id');
+                                                                var startingIndex = parseInt(index.split('-')[1]);
+                                                                showGallery(startingIndex);
+                                                            });
+                                                        }
+                                                    }, 'json');
+
+                                                };
+
+                                                xhr.send();
+                                                currentImageDownloadXhr = xhr;
+
+                                            }
+                                        }, 'json');
+
+                                    };
+
+                                    var doneDownloadingAnImage = function(err) {
+                                        if (err) {
+                                            console.log(err);
+                                            done(err);
+                                        } else {
+                                            index++;
+                                            if (index < $downloadImagesList.length) {
+                                                downloadAnImage(doneDownloadingAnImage);
+                                            } else {
+                                                done(null);
+                                            }
+                                        }
+                                    };
+
+                                    downloadAnImage(doneDownloadingAnImage);
+                                };
+
+                                buildDownloadImagesList();
+                                startDownloadingImages(function(err) {
+                                    if (err) {
+                                        console.log(err);
+                                    } else {
+                                        $('.imageBtnRow').removeClass('hidden');
+                                    }
+                                });
+
+                            };
+
+                            downloadAndDisplayImages();
                         }
-                        ;
-                        downloadAndDisplayImages();
-                    }
 
-                    var attachments = item.attachments;
-                    for (var i = 1; i < attachments.length; i++) {
-                        var attachment = attachments[i];
-                        var encodedFileName = decryptBinaryString(attachment.fileName, itemKey, itemIV);
-                        var fileName = forge.util.decodeUtf8(encodedFileName);
-                        var $attachment = showAttachment(fileName, attachment.size);
-                        $attachment.attr('id', attachment.s3KeyPrefix);
-                        changeDownloadingState($attachment, 'Attached');
-                        var $download = $attachment.find('.downloadBtn');
-                        $download.off();
-                        $download.click(queueDownloadEvent);
-                    }
-                    if (!thisVersion || thisVersion === currentVersion) {
-                        enableEditControls();
-                        /* initializeEditorButtons();
-						initializeImageButton();
-          				initializeAttachButton();
-						*/
-                    } else {
-                        disableEditControls();
-                    }
-                }
-                if (itemSpace.substring(0, 1) === 'u') {
-                    $('.navbarTeamName').text("Yours");
-                    decryptItem(expandedKey);
-                    getPageComments();
-                    done(null, item);
-                } else {
-                    isATeamItem = true;
-                    var itemSpaceParts = itemSpace.split(':');
-                    itemSpaceParts.splice(-2, 2);
-                    teamId = itemSpaceParts.join(':');
-                    getTeamData(teamId, function(err, team) {
-                        if (err) {
+                        var attachments = item.attachments;
+                        for (var i = 1; i < attachments.length; i++) {
+                            var attachment = attachments[i];
+                            var encodedFileName = decryptBinaryString(attachment.fileName, itemKey, itemIV);
+                            var fileName = forge.util.decodeUtf8(encodedFileName);
+                            var $attachment = showAttachment(fileName, attachment.size);
+                            $attachment.attr('id', attachment.s3KeyPrefix);
+                            changeDownloadingState($attachment, 'Attached');
+                            var $download = $attachment.find('.downloadBtn');
+                            $download.off();
+                            $download.click(queueDownloadEvent);
+                        }
+
+                        if (!thisVersion || thisVersion === currentVersion) {
+                            enableEditControls();
+                            /*initializeEditorButtons();
+                            initializeImageButton();
+                            initializeAttachButton();
+                            */
                         } else {
-                            var teamKeyEnvelope = team.teamKeyEnvelope;
-                            teamKey = pkiDecrypt(teamKeyEnvelope);
-                            var encryptedTeamName = team.team._source.name;
-                            var teamIV = team.team._source.IV;
-                            teamName = decryptBinaryString(encryptedTeamName, teamKey, teamIV);
-                            teamName = forge.util.decodeUtf8(teamName);
-                            teamName = DOMPurify.sanitize(teamName);
-
-                            if (teamName.length > 20) {
-                                var displayTeamName = teamName.substr(0, 20);
-                            } else {
-                                var displayTeamName = teamName;
-                            }
-
-                            $('.navbarTeamName').text(displayTeamName);
-
-                            var teamSearchKeyEnvelope = team.team._source.searchKeyEnvelope;
-                            var teamSearchKeyIV = team.team._source.searchKeyIV;
-
-                            teamSearchKey = decryptBinaryString(teamSearchKeyEnvelope, teamKey, teamSearchKeyIV);
-                            setIsATeamItem(teamKey, teamSearchKey);
-
-                            decryptItem(teamKey);
-                            getPageComments();
-                            done(null, item);
+                            disableEditControls();
                         }
-                    });
+
+                        
+                        if ($('.contentContainer').length > 0) {
+                            //$('.contentContainer').remove();
+                            $('.contentContainer').addClass('hidden');
+                        }
+                        initContentView(content);
+
+                    }
+                    if (itemSpace.substring(0, 1) === 'u') {
+                        $('.navbarTeamName').text("Yours");
+                        decryptItem(expandedKey);
+                        getPageComments();
+                        done(null, item);
+                    } else {
+                        isATeamItem = true;
+                        var itemSpaceParts = itemSpace.split(':');
+                        itemSpaceParts.splice(-2, 2);
+                        teamId = itemSpaceParts.join(':');
+                        getTeamData(teamId, function(err, team) {
+                            if (err) {
+
+                            } else {
+                                var teamKeyEnvelope = team.teamKeyEnvelope;
+                                teamKey = pkiDecrypt(teamKeyEnvelope);
+                                var encryptedTeamName = team.team._source.name;
+                                var teamIV = team.team._source.IV;
+                                teamName = decryptBinaryString(encryptedTeamName, teamKey, teamIV);
+                                teamName = forge.util.decodeUtf8(teamName);
+                                teamName = DOMPurify.sanitize(teamName);
+
+                                if (teamName.length > 20) {
+                                    var displayTeamName = teamName.substr(0, 20);
+                                } else {
+                                    var displayTeamName = teamName;
+                                }
+
+                                $('.navbarTeamName').text(displayTeamName);
+
+                                var teamSearchKeyEnvelope = team.team._source.searchKeyEnvelope;
+                                var teamSearchKeyIV = team.team._source.searchKeyIV;
+
+                                teamSearchKey = decryptBinaryString(teamSearchKeyEnvelope, teamKey, teamSearchKeyIV);
+                                setIsATeamItem(teamKey, teamSearchKey);
+
+                                decryptItem(teamKey);
+                                getPageComments();
+                                done(null, item);
+                            }
+                        });
+                    }
+                } else {
+                    initializeTagsInput();
+                    setCurrentVersion(0);
+
+                    if ((itemId.substring(0, 2) === 'np') || (itemId.substring(0, 2) === 'dp')) {
+                        itemIdParts = itemId.split(':');
+
+                        if (itemId.substring(0, 2) === 'np') {
+                            itemContainer = 'n';
+                            itemPosition = Number(itemIdParts[itemIdParts.length - 1]);
+                        } else if (itemId.substring(0, 2) === 'dp') {
+                            itemContainer = 'd';
+                            var dateText = itemIdParts[itemIdParts.length - 1];
+                            dateText = dateText.replace(/-/g, "");
+                            itemPosition = Number(dateText);
+                        }
+                        for (var i = 1; i < itemIdParts.length - 1; i++) {
+                            itemContainer = itemContainer + ':' + itemIdParts[i];
+                        }
+                        setupContainerPageKeyValue('itemPosition', itemPosition);
+                        isBlankPageItem = true;
+                        getPath(itemContainer, itemId, function(itemPath) {
+                            itemSpace = itemPath[0]._id;
+                            initCurrentSpace(itemSpace);
+
+                            if (itemSpace.substring(0, 1) === 't') {
+                                isATeamItem = true;
+
+                                var itemSpaceParts = itemSpace.split(':');
+                                itemSpaceParts.splice(-2, 2);
+                                teamId = itemSpaceParts.join(':');
+                                getTeamData(teamId, function(err, team) {
+                                    if (err) {
+                                        done(err);
+                                    } else {
+                                        var teamKeyEnvelope = team.teamKeyEnvelope;
+                                        teamKey = pkiDecrypt(teamKeyEnvelope);
+                                        var encryptedTeamName = team.team._source.name;
+                                        var teamIV = team.team._source.IV;
+                                        teamName = decryptBinaryString(encryptedTeamName, teamKey, teamIV);
+                                        teamName = forge.util.decodeUtf8(teamName);
+                                        teamName = DOMPurify.sanitize(teamName);
+                                        var teamSearchKeyEnvelope = team.team._source.searchKeyEnvelope;
+                                        var teamSearchKeyIV = team.team._source.searchKeyIV;
+                                        teamSearchKey = decryptBinaryString(teamSearchKeyEnvelope, teamKey, teamSearchKeyIV);
+                                        $('.pathSpace').find('a').html(teamName);
+                                        showPath(teamName, itemPath, itemContainer, teamKey, itemId);
+
+                                        setupNewItemKey();
+                                        done(null, null);
+                                    }
+                                });
+                            } else {
+                                setupNewItemKey();
+                                showPath('Personal', itemPath, itemContainer, expandedKey, itemId);
+                                done(null, null);
+                            }
+                        });
+
+                        addSelectContentTypeView();
+                    } else {
+                        done(null, null);
+                    }
                 }
             } else {
-                initializeTagsInput();
-                setCurrentVersion(0);
-
-                if ((itemId.substring(0, 2) === 'np') || (itemId.substring(0, 2) === 'dp')) {
-                    itemIdParts = itemId.split(':');
-
-                    if (itemId.substring(0, 2) === 'np') {
-                        itemContainer = 'n';
-                        itemPosition = Number(itemIdParts[itemIdParts.length - 1]);
-                    } else if (itemId.substring(0, 2) === 'dp') {
-                        itemContainer = 'd';
-                        var dateText = itemIdParts[itemIdParts.length - 1];
-                        dateText = dateText.replace(/-/g, "");
-                        itemPosition = Number(dateText);
-                    }
-                    for (var i = 1; i < itemIdParts.length - 1; i++) {
-                        itemContainer = itemContainer + ':' + itemIdParts[i];
-                    }
-                    setupContainerPageKeyValue('itemPosition', itemPosition);
-                    isBlankPageItem = true;
-                    getPath(itemContainer, itemId, function(itemPath) {
-                        itemSpace = itemPath[0]._id;
-
-                        if (itemSpace.substring(0, 1) === 't') {
-                            isATeamItem = true;
-
-                            var itemSpaceParts = itemSpace.split(':');
-                            itemSpaceParts.splice(-2, 2);
-                            teamId = itemSpaceParts.join(':');
-                            getTeamData(teamId, function(err, team) {
-                                if (err) {
-                                    done(err);
-                                } else {
-                                    var teamKeyEnvelope = team.teamKeyEnvelope;
-                                    teamKey = pkiDecrypt(teamKeyEnvelope);
-                                    var encryptedTeamName = team.team._source.name;
-                                    var teamIV = team.team._source.IV;
-                                    teamName = decryptBinaryString(encryptedTeamName, teamKey, teamIV);
-                                    teamName = forge.util.decodeUtf8(teamName);
-                                    teamName = DOMPurify.sanitize(teamName);
-                                    var teamSearchKeyEnvelope = team.team._source.searchKeyEnvelope;
-                                    var teamSearchKeyIV = team.team._source.searchKeyIV;
-                                    teamSearchKey = decryptBinaryString(teamSearchKeyEnvelope, teamKey, teamSearchKeyIV);
-                                    $('.pathSpace').find('a').html(teamName);
-                                    showPath(teamName, itemPath, itemContainer, teamKey, itemId);
-
-                                    setupNewItemKey();
-                                    done(null, null);
-                                }
-                            });
-                        } else {
-                            setupNewItemKey();
-                            showPath('Personal', itemPath, itemContainer, expandedKey, itemId);
-                            done(null, null);
-                        }
-                    });
-                } else {
-                    done(null, null);
-                }
+                done(data.err)
             }
-        } else {
-            done(data.err)
-        }
-        hideLoadingPage();
-    }, 'json');
-}
-;
+            hideLoadingPage();
+        }, 'json');
+};
+
 function initializePageControlsCallback(callbacks) {
     if (callbacks.handleEditorStateChanged)
         editorStateChanged = callbacks.handleEditorStateChanged;
@@ -2921,4 +3163,920 @@ function initializePageControls() {
     initializeEditorButtons();
     initializeImageButton();
     initializeAttachButton();
+
+    addButtonLock();
+    addSnippet();
+    modifyPrevnextButton();
+    //backupContentsInLocalStorage();
 }
+
+function addButtonLock() {
+    if ($('.btnLock').length == 0) {
+    
+        $('.btnFloatingWrite').after( "<div class='btnLock hidden' style='bottom:-5px; position:fixed; z-index:15000;'></div>" );
+        $('.btnLock').append("<img src='' style='width:80px; height:80px;'></img>");
+        
+        var margin = $('.btnFloatingWrite').css('right');
+        $('.btnLock').css('left',  parseInt(margin) - 30);
+        $('.btnLock img').attr('src', svgLen);
+
+        $('.btnLock').click(function(e) {
+            if (statusIsLockOrLen == 'len') {
+                $(e.target).trigger('blur');
+                $('#modalSnippet').css('z-index', '15000');
+                var isModalVisible = $('#modalSnippet').is(':visible');
+                if (!isModalVisible) {
+                    //showDownloadItemsModal(currentSpace);
+                    $('.enc_buffer').html(encrypted_buffer);
+                    $('#modalSnippet').modal('show');
+                }    
+            }        
+
+            return false;
+        });
+    } else {
+        $('.btnLock').addClass('hidden');
+    }
+}
+
+function handleMoveAnItem(e) {
+    $(e.target).trigger('blur');
+    var isModalVisible = $('#moveAnItemModal').is(':visible');
+    if (!isModalVisible) {
+        showMoveAnItemModal(itemCopy, itemSpace);
+    }
+    return false;
+}
+
+function handleTrashAnItem(e) {
+    $(e.target).trigger('blur');
+    var isModalVisible = $('#trashAnItemModal').is(':visible');
+    if (!isModalVisible) {
+        showTrashAnItemModal(itemSpace, itemSpace);
+    }
+    return false;
+}
+
+var backupContentsInLocalStorage = function() {
+    window.onbeforeunload = null;
+    //console.log('backupContentsInLocalStorage, pageContentType', pageContentType);
+    if (isOldVersion()) {
+    } else if (pageContentType) {
+        var flg = true;
+        if ( (pageContentType == constContentTypeWrite) && !editorContentsStatus ) {
+            flg = false;
+        }
+
+        if (flg) {
+            //var current_contents = currentEditor.froalaEditor('html.get');
+            var current_contents = getCurrentContent();
+            if (lastContent == undefined) {
+                lastContent = current_contents;
+            } else if ( (current_contents != null) && (lastContent != current_contents) ) {
+                console.log('lastContent', lastContent);
+                console.log('current_contents', current_contents);    
+                pageLocalStorageKey = itemId + pageContentType;
+                console.log('save chagned contents(pageLocalStorageKey)', pageLocalStorageKey);
+                localStorage.setItem(pageLocalStorageKey, current_contents);
+                lastContent = current_contents;    
+            }
+            //lastContent = current_contents;      
+        }
+              
+    }
+    setTimeout(backupContentsInLocalStorage, 3000);
+}; 
+
+function addSelectContentTypeView()
+{
+    if (isOldVersion())    {
+        return;
+    }
+    
+    $('.btnWrite.editControl#content').after( html_selectContentType );
+    
+    $('.selectContentType').click(function(e) {
+        //$('#selectContentTypeModal').modal('show');
+        return false;
+    });
+}
+
+function showCanvasLoadingPage(){            
+    $(".froala-editor").LoadingOverlay("show", {
+        image: "",
+        fontawesome: "fa fa-circle-o-notch fa-spin",
+        maxSize: "38px",
+        minSize: "36px",
+        background: "rgba(255, 255, 255, 0.0)"
+    });
+}
+
+function hideCanvasLoadingPage() {
+    $(".froala-editor").LoadingOverlay("hide");
+};
+
+function addSelectContentTypeModal()
+{
+    var htmlSelectContentTypeModal = `
+        <div class="modal fade in" id="selectContentTypeModal" tabindex="-1" role="dialog" aria-labelledby="selectContentTypeModal" aria-hidden="true" style="display: none; padding-right: 17px;">
+            <div class="modal-dialog">
+                <div class="modal-content" style="overflow: hidden;">
+                    <div class="modal-header">
+                        <button type="button" class="close" id="closeSelectContentTypeModal" data-dismiss="modal" aria-hidden="true">×</button>
+                        <h4 class="modal-title" id="moveItemsModalLabel">Please Select a Type</h4>
+                    </div>
+                    <div class="modal-body" style="max-height: 336px; overflow-y: auto;">
+                        
+                        <div class="list-group containersList">
+                            <a href="#" class="list-group-item contentTypeItem contentTypeWrite">
+                                <em class="fontSize18Px">Write</em>
+                            </a>
+                            <a href="#" class="list-group-item contentTypeItem contentTypeDraw">
+                                <em class="fontSize18Px">Draw</em>
+                            </a>
+                            <a href="#" class="list-group-item contentTypeItem contentTypeSpreadsheet">
+                                <em class="fontSize18Px">Spreadsheet</em>
+                            </a>
+                            <a href="#" class="list-group-item contentTypeItem contentTypeDoc">
+                                <em class="fontSize18Px">Doc</em>
+                            </a>
+                            <a href="#" class="list-group-item contentTypeItem contentTypeMxGraph">
+                                <em class="fontSize18Px">Diagram</em>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            <!-- /.modal-content -->
+            </div>
+        <!-- /.modal-dialog -->
+        </div>
+    `;
+
+    $(htmlSelectContentTypeModal).appendTo('body');
+
+    $('.contentTypeItem').click(function(e) {    
+        e.preventDefault();    
+
+        var $contentTypeItem = $(e.target);
+        if (e.target.tagName == 'EM') {
+            $contentTypeItem = $(e.target.parentNode);
+        }
+
+        if ($contentTypeItem.hasClass('contentTypeWrite')) {
+            pageContentType = constContentTypeWrite;
+            //$('.btnWrite.editControl#content').trigger("click");
+        } else if ($contentTypeItem.hasClass('contentTypeDraw')) {
+            pageContentType = constContentTypeDraw;
+        } else if ($contentTypeItem.hasClass('contentTypeSpreadsheet')) {
+            pageContentType = constContentTypeSpreadsheet;
+        } else if ($contentTypeItem.hasClass('contentTypeDoc')) {
+            pageContentType = constContentTypeDoc;
+        } else if ($contentTypeItem.hasClass('contentTypeMxGraph')) {
+            pageContentType = constContentTypeMxGraph;
+        } else {
+            alert('Select the correct type.');
+            return;
+        }
+
+        $('#selectContentTypeModal').modal('hide');
+        $('.selectContentType').addClass('hidden');
+
+        console.log('clicked the type: ' + pageContentType);
+        initContentView(null);    
+        return;
+        showCanvasLoadingPage();
+        loadLibrayJsCss(pageContentType, function() {
+            // if ($.inArray(pageContentType, [constContentTypeSpreadsheet, constContentTypeDoc, constContentTypeMxGraph]) > -1) {
+            //     $('.widgetIcon').trigger('click');
+            // }
+            loadDataInContentView(null);
+            hideCanvasLoadingPage();
+            console.log('loaded library.');
+        });
+    })
+    
+}
+
+addSelectContentTypeModal();
+
+function addTemplateOtherTypesStatusAndProgress()
+{
+    var html_tmp = `<div class="templateOtherTypesStatusAndProgress">
+                        <div class="uploadText downloadText"></div>
+                        <div class="progress progress-striped active marginTop20Px marginBottom0Px">
+                            <div class="sceneControl progress-bar width0Percent"></div>
+                        </div>
+                    </div>
+    `;
+
+    $('.btnWrite.editControl#content').parent().after(html_tmp);
+    $tmp = $('.templateOtherTypesStatusAndProgress');
+
+    return($tmp);
+}
+
+function addTemplateOtherTypesUploadProgress()
+{
+    var html_tmp = `<div class="templateOtherTypesUploadProgress hidden" style="position: fixed;
+                    display: block; bottom: 20px; width: 60%; left: 20%; z-index: 10000;">
+                        <div class="progress progress-striped active marginTop20Px marginBottom0Px">
+                            <div class="sceneControl progress-bar width0Percent"></div>
+                        </div>
+                    </div>
+    `;
+
+    $('.contentsWrapper').append(html_tmp);
+    
+    $tmp = $('.templateOtherTypesUploadProgress');
+
+    return($tmp);
+}
+
+function loadLibrayJsCss(content_type, done)
+{
+    if ($('.contentContainer').length > 0) {
+        done(null);
+        return;
+    }
+
+    if ((content_type == null) || (content_type == constContentTypeWrite)) {
+        done(null);
+        return;
+    }
+
+    function loadCSS(href) 
+    {
+        var cssLink = $("<link>");
+        $("head").append(cssLink);
+        cssLink.attr({
+            rel:  "stylesheet",
+            type: "text/css",
+            href: href
+        });
+    };
+
+    function loadJS(jsFile, done)
+    {
+        $(function (d, s, id) {
+            'use strict';
+
+            var js, fjs = d.getElementsByTagName(s)[0];
+            js = d.createElement(s);
+            js.onload = function() {
+              done();
+            };
+            js.src = jsFile;
+            js.setAttribute("crossorigin", "anonymous");
+            fjs.parentNode.insertBefore(js, fjs);
+
+        }(document, 'script', 'forge'));    
+    }
+
+    function addContentWidget()
+    {
+        // content widget
+        if (content_type == constContentTypeDraw) {
+            $('.pageRow.editorRow').append('<div class="contentContainer" style="margin-left:10px; margin-right:10px;"></div>');
+            var html_tmp = `<div class="templateOtherTypesUploadProgress hidden" >
+                                <div class="progress progress-striped active marginLeft10Px marginRight10Px">
+                                    <div class="sceneControl progress-bar width0Percent"></div>
+                                </div>
+                            </div>
+            `;
+
+            $('.contentContainer').after(html_tmp);
+            return;
+        } else { // fullscreen
+            $('body').append('<div class="contentsWrapper"><div class="contentContainer"></div></div>');
+            var html_tmp = `<div class="templateOtherTypesUploadProgress hidden" style="position: fixed;
+                            display: block; bottom: 20px; width: 60%; left: 20%; z-index: 10000;">
+                                <div class="progress progress-striped active marginTop20Px marginBottom0Px">
+                                    <div class="sceneControl progress-bar width0Percent"></div>
+                                </div>
+                            </div>
+            `;
+
+            $('.contentsWrapper').append(html_tmp);
+            //addTemplateOtherTypesUploadProgress();
+        }            
+    }
+
+    addContentWidget();
+
+    function addIconAndButtons()
+    {
+        // process edit button...
+        if (content_type == constContentTypeWrite) {                
+        } else {
+            $('.btnWrite.editControl#content').addClass('hidden');
+            $('.btnWrite.btnEditor#content').addClass('hidden');
+        }
+
+        // content icon
+        var icon_src = null;
+        if (content_type == constContentTypeSpreadsheet) {
+            icon_src = iconSpreadsheet;
+        } else if (content_type == constContentTypeDoc) {
+            icon_src = iconDoc;
+        } else if (content_type == constContentTypeMxGraph) {
+            icon_src = iconDiagram;
+        }
+
+        if (icon_src) {
+            $('.pageRow.editorRow').append('<div class="widgetIcon text-center"></div>');
+            $('<img />', {
+                src: icon_src,
+                width:'200px'
+            }).appendTo($('.widgetIcon').empty());            
+
+            $('.widgetIcon').click(function(e) {
+                e.preventDefault();    
+                //noScroll();
+                window.addEventListener('scroll', noScroll);
+
+                $('.contentContainer').removeClass('hidden');
+                $('.btnMinimize').removeClass('hidden');
+                $('.btnContentSave').removeClass('hidden');
+
+                $('.contentContainer').css({
+                    'display': 'block',
+                    'z-index': '9999',
+                    'position': 'fixed',
+                    'width': '100%',
+                    'height': '100%',
+                    'top': '0',
+                    'right': '0',
+                    'left': '0',
+                    'bottom': '0',
+                    'overflow': 'auto',
+                    'margin-left': '10px'
+                });
+
+                if (content_type == constContentTypeSpreadsheet) {
+                    $("#spreadsheet").data("kendoSpreadsheet").resize();
+                }
+            });
+        }
+
+        // content minimize button
+        if (icon_src) {
+            var htmlButton = `
+                <div class="btnEditor btn btnFloatingMinimize btnFloating btnMinimize" style="">
+                    <i class="fa fa-times fa-2x" aria-hidden="true"></i>
+                </div>
+            `;
+            $('body').after( htmlButton );
+            $('.btnMinimize').click(function(e) {
+                e.preventDefault();    
+                $('.btnMinimize').addClass('hidden');
+                $('.btnContentSave').addClass('hidden');
+                $('.contentContainer').addClass('hidden');
+                window.removeEventListener('scroll', noScroll);
+
+                var arr_events = $._data(window, "events"); 
+                var arr_scroll = arr_events['scroll'];
+                $.each(arr_scroll, function(key, handler) {
+                    console.log(handler);
+                });
+                
+
+            });
+        }
+
+        // conent save button
+        var htmlButton = `
+            <div class="btnEditor btn btnFloatingCanvasSave btnFloating btnContentSave" style="">
+                <i class="fa fa-check fa-2x" aria-hidden="true"></i>
+            </div>
+        `;
+        //$('body').after( htmlButton );    
+        //$('.btnFloatingCanvasSave').css('right', $('.btnFloatingWrite').css('right'));
+        if ($.inArray(pageContentType, [null, constContentTypeWrite, constContentTypeDraw]) > -1) {
+            $('.btnFloatingCanvasSave').css('right', $('.btnFloatingWrite').css('right'));
+        } else {
+            $('.btnFloatingCanvasSave').css('right', "20px");
+        }
+
+        $( ".btnContentSave" ).attr( "disabled", "disabled" );
+        if (isOldVersion()) {
+            //$( ".btnContentSave" ).attr( "disabled", "disabled" );
+        } else {
+            $('.btnContentSave').click(function(e) {
+                e.preventDefault();                                    
+                saveOtherTypesContent();                
+            });
+        }
+        
+    }
+
+    if (content_type == constContentTypeDraw) {
+        
+        loadCSS(library_path + '/javascripts/literallycanvas/css/literallycanvas.css');
+
+        loadJS(library_path + "/javascripts/literallycanvas/js/react-with-addons.js", function() {
+            loadJS(library_path + "/javascripts/literallycanvas/js/react-dom.js", function() {
+                loadJS(library_path + "/javascripts/literallycanvas/js/literallycanvas.js", function() {
+                    //console.log('literallycanvas library is loaded...');
+                    $( ".contentContainer" ).attr('id', 'literallycanvas');
+                    lc = LC.init(
+                        document.getElementsByClassName('contentContainer')[0], 
+                            {imageURLPrefix: library_path + '/javascripts/literallycanvas/img',
+                            backgroundColor: 'whitesmoke'}
+                    );
+                    //lc.loadSnapshotJSON('{"shapes":[],"colors":{"primary":"#000","secondary":"#fff","background":"black"}}');
+                    addIconAndButtons();
+                    done(null);
+                });
+            });
+        });
+    } else if (content_type == constContentTypeSpreadsheet) {
+        spreedsheetKey = itemId + 'SpreedsheetContent';
+
+        loadCSS('https://kendo.cdn.telerik.com/2019.2.619/styles/kendo.common-material.min.css');
+        loadCSS('https://kendo.cdn.telerik.com/2019.2.619/styles/kendo.rtl.min.css');
+        loadCSS('https://kendo.cdn.telerik.com/2019.2.619/styles/kendo.material.min.css');
+        loadCSS('https://kendo.cdn.telerik.com/2019.2.619/styles/kendo.material.mobile.min.css');
+        loadCSS(library_path + '/javascripts/kendo/css/kendo.examples.css');
+        //loadCSS('http://localhost:8000/javascripts/kendo/css/kendo.examples.css');
+
+        loadJS("https://kendo.cdn.telerik.com/2019.2.619/js/jszip.min.js", function() {
+            loadJS("https://kendo.cdn.telerik.com/2019.2.619/js/kendo.all.min.js", function() {
+                
+                // $('.contentContainer').append('<div id="spreadsheet"></div>');
+                // $('#spreadsheet').css('width', '100%');
+                // $('#spreadsheet').css('height', '100%');
+                // $("#spreadsheet").kendoSpreadsheet({change: onSpreadsheetChange});
+                // spreadsheet = $("#spreadsheet").data("kendoSpreadsheet");
+                // spreadsheet.resize();
+
+                // timerSaveSpreedsheet();
+                // function onSpreadsheetChange(arg) {
+                //     console.log('change_event(spreedsheet)', arg);
+                //     timerSaveSpreedsheet();                
+                // }
+
+                addIconAndButtons();
+                done(null);
+            });
+        });                
+    } else if (content_type == constContentTypeDoc) {
+        
+        syncfusionKey = itemId + 'SyncfusionWordContent';
+
+        var template = `                
+            <div id="waiting-popup"></div>
+            <div class="control-section">
+                <title>Essential JS 2 - DocumentEditor</title>
+                <div id="panel" style="height: 100%;">
+                    <div id="documenteditor_titlebar" class="e-de-ctn-title"></div>
+                    <div id="documenteditor_container_body" style="display: flex;position:relative; height:100%">
+                        <div id="syncfusion-container" style="width: 100%; height: 100%;"></div>
+                    </div>
+                </div>
+            </div>    
+        `;
+
+        $(".contentContainer").css("border", "1px solid red;");
+        $(".contentContainer").append(template);
+
+        loadCSS(library_path + '/javascripts/syncfusion/css/material.css');                
+        loadCSS(library_path + '/javascripts/syncfusion/css/docEditor.css');
+
+        loadJS(library_path + "/javascripts/syncfusion/js/ej2.min.js", function() {
+            loadJS(library_path + "/javascripts/syncfusion/js/docEditor.js", function() {
+            //loadJS("http://localhost:8000/javascripts/syncfusion/js/docEditor.js", function() {
+                $('.contentContainer').attr('id', 'syncfusion-documenteditor');
+                // suncfusion_container = loadSyncfusionWordContent(null);
+                // getSyncfusionWordContent();
+
+                // suncfusion_container.contentChange = function () { 
+                //     console.log('change_event_syncfusion');
+                //     getSyncfusionWordContent();
+                // }
+
+                addIconAndButtons();
+                done(null);                    
+            });
+        });
+    } else if (content_type == constContentTypeMxGraph) {
+        $('.contentContainer').addClass('geEditor');
+        $('.contentContainer').attr('id', 'editor-ui-container');
+        mxRoot = library_path + '/javascripts/';
+
+        loadCSS(library_path + '/javascripts/grapheditor/styles/grapheditor.css');
+
+        loadJS(library_path + '/javascripts/grapheditor/grapheditorOptions.js', function() {
+        //loadJS('http://localhost:8000/javascripts/grapheditor/grapheditorOptions.js', function() {
+        loadJS(library_path + '/javascripts/grapheditor/js/Init.js', function() {
+        loadJS(library_path + '/javascripts/grapheditor/deflate/pako.min.js', function() {
+        loadJS(library_path + '/javascripts/grapheditor/deflate/base64.js', function() {
+        loadJS(library_path + '/javascripts/grapheditor/jscolor/jscolor.js', function() {
+        loadJS(library_path + '/javascripts/grapheditor/sanitizer/sanitizer.min.js', function() {
+        loadJS(library_path + '/javascripts/grapheditor/mxClient/mxClient.js', function() {
+        //loadJS('http://localhost:8000/javascripts/grapheditor/mxClient/mxClient.js', function() {
+        loadJS(library_path + '/javascripts/grapheditor/js/EditorUi.js', function() {
+        //loadJS('http://localhost:8000/javascripts/grapheditor/js/Editor.js', function() {
+        loadJS(library_path + '/javascripts/grapheditor/js/Editor.js', function() {
+        loadJS(library_path + '/javascripts/grapheditor/js/Sidebar.js', function() {
+        loadJS(library_path + '/javascripts/grapheditor/js/Graph.js', function() {
+        loadJS(library_path + '/javascripts/grapheditor/js/Format.js', function() {
+        loadJS(library_path + '/javascripts/grapheditor/js/Shapes.js', function() {
+        loadJS(library_path + '/javascripts/grapheditor/js/Actions.js', function() {
+        loadJS(library_path + '/javascripts/grapheditor/js/Menus.js', function() {
+        //loadJS('http://localhost:8000/javascripts/grapheditor/js/Toolbar.js', function() {
+        loadJS(library_path + '/javascripts/grapheditor/js/Toolbar.js', function() {
+            loadJS(library_path + '/javascripts/grapheditor/js/Dialogs.js', function() {
+                //loadJS('/javascripts/grapheditor/index.js', function() {
+                    addIconAndButtons();                        
+                    done(null);
+                //});
+            });
+        });
+        });
+        });
+        });
+        });
+        });
+        });
+        });
+        });
+        });
+        });
+        });
+        });
+        });
+        });
+        });
+    }
+}
+
+function isOldVersion()
+{
+    var isOld = false;
+
+    if ((oldVersion != undefined) && (oldVersion < currentVersion)) {
+        isOld = true;
+    }
+
+    return isOld;
+}
+
+function noScroll() {
+    $(window).scrollTop(0);
+}
+
+function timerSaveSpreedsheet()
+{
+    spreadsheet
+    .saveJSON()
+    .then(function(data){
+        var json = JSON.stringify(data, null, 2);
+        localStorage.setItem(spreedsheetKey, json);
+        setTimeout(timerSaveSpreedsheet, 500);
+    });
+}
+
+function loadDataInContentView(contentJSON) {
+    if (pageContentType == constContentTypeWrite) {
+        if (contentJSON != null) {
+            $('.froala-editor#content').html(contentJSON);    
+            downloadContentImageObjects();
+            handleVideoObjects();    
+
+            if (flgIsLoadingFromLocalStorageForWrite) {
+                $('.btnWrite.editControl#content').trigger( "click" );    
+            }    
+        }    
+
+    } else if (pageContentType == constContentTypeDraw) {            
+        if (contentJSON != null)
+        {
+            lc.loadSnapshot(JSON.parse(contentJSON));
+        }
+        var unsubscribe = lc.on('drawingChange', function(arguments) {
+            saveContentInLocalStorage();
+        });
+    } else if (pageContentType == constContentTypeSpreadsheet) {    
+        $('#spreadsheet').remove();
+        $('.contentContainer').append('<div id="spreadsheet"></div>');
+        $('#spreadsheet').css('width', '99%');
+        $('#spreadsheet').css('height', '99%');
+        $("#spreadsheet").kendoSpreadsheet({change: onSpreadsheetChange});
+        spreadsheet = $("#spreadsheet").data("kendoSpreadsheet");
+        //spreadsheet.resize();                                
+
+        if (contentJSON != null) {
+            spreadsheet.fromJSON(JSON.parse(contentJSON));                    
+            //spreadsheet.resize();
+        } 
+
+        function onSpreadsheetChange(arg) {
+            spreadsheet
+            .saveJSON()
+            .then(function(data){
+                var json = JSON.stringify(data, null, 2);
+                localStorage.setItem(spreedsheetKey, json);
+                saveContentInLocalStorage();
+            });
+        }
+
+        // trigger fullscreen...
+        $('.widgetIcon').trigger('click');
+        //hideLoadingPage();
+    } else if (pageContentType == constContentTypeDoc) {    
+        
+        suncfusion_container = loadSyncfusionWordContent(contentJSON);
+        suncfusion_container.contentChange = function () { 
+            console.log('change_event_syncfusion');
+            suncfusion_container.documentEditor.saveAsBlob('Sfdt').then(function (sfdtBlob) { 
+                var fileReader = new FileReader(); 
+                fileReader.onload = function (e) { 
+                    // Get Json string here 
+                    var sfdtText = fileReader.result; 
+                    // This string can send to server for saving it in database 
+                    localStorage.setItem(syncfusionKey, sfdtText);
+                    saveContentInLocalStorage();                
+                } 
+                fileReader.readAsText(sfdtBlob); 
+            }); 
+        }
+
+        $('.widgetIcon').trigger('click');
+        //hideLoadingPage();
+    } else if (pageContentType == constContentTypeMxGraph) {
+        
+        function loadMxGraphContent() {
+            if (mxGraphUI == null) {
+                setTimeout(loadMxGraphContent, 500);
+            } else {
+                window.onbeforeunload = null;
+                //var doc = mxUtils.parseXml($.parseXML(contentJSON));
+                if (contentJSON != null) {
+                    var doc = mxUtils.parseXml(contentJSON);
+                    mxGraphUI.editor.setGraphXml(doc.documentElement);
+                }
+
+                mxGraphUI.editor.graph.getModel().addListener(mxEvent.CHANGE, function() {
+                    console.log('change_event_mxGraph');
+                    saveContentInLocalStorage();
+                });
+
+            }
+        }
+        mxGraphUI = null;
+        var editorUiInit = EditorUi.prototype.init;
+
+        EditorUi.prototype.init = function()
+        {
+            editorUiInit.apply(this, arguments);
+        };
+
+        mxResources.loadDefaultBundle = false;
+        var bundle = mxResources.getDefaultBundle(RESOURCE_BASE, mxLanguage) ||
+            mxResources.getSpecialBundle(RESOURCE_BASE, mxLanguage);
+        mxUtils.getAll([bundle, STYLE_PATH + '/default.xml'], function(xhr)
+          {
+            // Adds bundle text to resources
+            mxResources.parse(xhr[0].getText());
+
+            // Configures the default graph theme
+            var themes = new Object();
+            themes[Graph.prototype.defaultThemeName] = xhr[1].getDocumentElement();
+
+            // Main
+            mxGraphUI = new EditorUi(new Editor(urlParams['chrome'] == '0', themes), document.getElementById("editor-ui-container"));
+          }, function()
+          {
+            document.body.innerHTML = '<center style="margin-top:10%;">Error loading resource files. Please check browser console.</center>';
+          });
+
+        loadMxGraphContent();                    
+         
+        $('.widgetIcon').trigger('click');
+        //hideLoadingPage();
+    }
+}
+
+function initContentView(contentFromeServer)
+{
+    var pageLocalStorageContent = null;
+
+    var content = null;
+    $downloadContent = null;
+
+    console.log('starting_initContentView');
+
+    showCanvasLoadingPage();
+
+    // check localstorage content
+    function getKeyContentFromLocalStorage() {
+        if (localStorage.getItem(itemId + constContentTypeWrite)) {
+            pageLocalStorageKey = itemId + constContentTypeWrite;
+        } else if (localStorage.getItem(itemId + constContentTypeDraw)) {
+            pageLocalStorageKey = itemId + constContentTypeDraw;
+        } else if (localStorage.getItem(itemId + constContentTypeSpreadsheet)) {
+            pageLocalStorageKey = itemId + constContentTypeSpreadsheet;
+        } else if (localStorage.getItem(itemId + constContentTypeDoc)) {
+            pageLocalStorageKey = itemId + constContentTypeDoc;
+        } else if (localStorage.getItem(itemId + constContentTypeMxGraph)) {
+            pageLocalStorageKey = itemId + constContentTypeMxGraph;
+        } 
+
+        if (pageLocalStorageKey != null) {
+            // found LocalStorage item...
+            pageLocalStorageContent = localStorage.getItem(pageLocalStorageKey);
+            //console.log('pageLocalStorageContent = ', pageLocalStorageContent);
+        }
+    }
+
+    getKeyContentFromLocalStorage();
+    
+    // next get contents        
+    if ( (pageContentType == null) && (pageLocalStorageContent == null) )  {
+        addSelectContentTypeView();    
+        hideCanvasLoadingPage();
+    } else {
+        //s3Key = contentFromeServer;
+
+        startGettingContent(function(err) {    
+            if ($downloadContent) $downloadContent.remove();
+            console.log('finish_startGettingContent');
+
+            if (err) {
+                hideCanvasLoadingPage();
+                console.log(err);
+                alert(err);
+            } else {                    
+                var content_data = content;
+                var isLocalStorage;
+                //console.log('currentVersion = ', currentVersion);
+                //console.log('oldVersion = ', oldVersion);
+
+                if (oldVersion == '1') {
+                    $('.widgetIcon').addClass('hidden');
+                } else {
+                    $('.widgetIcon').removeClass('hidden');
+                }
+                
+                if (isOldVersion()) {
+                    isLocalStorage = false;
+                } else {
+                    isLocalStorage = isLoadFromLocalStorage();
+                }
+
+                if (isLocalStorage) {
+                    content_data = pageLocalStorageContent;
+                    if (pageContentType == constContentTypeWrite) {
+                        flgIsLoadingFromLocalStorageForWrite = true;
+                    }
+                } 
+
+                loadLibrayJsCss(pageContentType, function(err) {      
+                    if (pageContentType == null) {
+                        addSelectContentTypeView();
+                    } else {
+                        loadDataInContentView(content_data);
+                        $('.contentContainer').removeClass('hidden');    
+                    }
+                    
+                    hideCanvasLoadingPage();
+                }); 
+                
+            }
+        });
+    }
+
+    function startGettingContent(doneGetting) {
+
+        function getWriteTypesContent(done) {
+            content = contentFromeServer;
+            contentsFromServer = contentFromeServer;
+            done(null);
+        }
+
+        function downloadOtherTypesContent(done) {
+            $downloadContent = addTemplateOtherTypesStatusAndProgress();
+            $downloadContent.find('.downloadText').text("Downloading");
+            $downloadContent.find('.progress-bar').css('width', '0%');                
+            // var id = $downloadImage.attr('id');
+            // var s3CommonKey = $downloadImage.data('s3Key');
+            //var s3Key = s3CommonKey + "_gallery";
+            var s3Key = contentFromeServer;
+            console.log('download_s3Key = ', s3Key);
+
+            if (s3Key == null) {
+                done(null); // this is version 1...
+                return;
+            }
+
+            $.post(server_addr + '/memberAPI/preS3Download', {
+                itemId: itemId,
+                s3Key: s3Key
+            }, function(data, textStatus, jQxhr) {
+                console.log('call_preS3Download = ', data.status);
+                if (data.status === 'ok') {
+                    var signedURL = data.signedURL;
+                    console.log('signedURL = ', signedURL);
+
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('GET', signedURL, true);
+                    xhr.responseType = 'arraybuffer';
+
+                    xhr.addEventListener("progress", function(evt) {
+                        if (evt.lengthComputable) {
+                            var percentComplete = evt.loaded / evt.total * 100;
+                            //$downloadImage.find('.progress-bar').css('width', percentComplete + '%');
+                            $downloadContent.find('.progress-bar').css('width', percentComplete + '%');
+                            //console.log('xhr_download progress = ', percentComplete + '%');
+                        }
+                    }, false);
+
+                    xhr.onload = function(e) {
+                        $downloadContent.find('.downloadText').text("Decrypting");
+                        // $downloadImage.find('.downloadText').text("Decrypting");
+                        // currentImageDownloadXhr = null;
+                        var encryptedContentDataInArrayBuffer = this.response;
+                        $.post(server_addr + '/memberAPI/postS3Download', {
+                            itemId: itemId,
+                            s3Key: s3Key
+                        }, function(data, textStatus, jQxhr) {
+                            console.log('call_postS3Download = ', data.status);
+                            if (data.status === 'ok') {
+                                var item = data.item;
+                                var size = item.size;
+
+                                var decryptedContentDataInUint8Array = decryptArrayBuffer(encryptedContentDataInArrayBuffer, itemKey, itemIV);
+                                function ab2str(buf) {
+                                    //return String.fromCharCode.apply(null, new Uint8Array(buf));
+                                    var str = new TextDecoder("utf-8").decode(buf);
+                                    return str;
+                                }
+                                var arraybufferContent = decryptedContentDataInUint8Array;
+                                arraybufferContent = ab2str(arraybufferContent);
+                                content = arraybufferContent;
+                                //console.log('decryptedContentDataInUint8Array = ', decryptedContentDataInUint8Array);
+                                //console.log('arraybufferContent=', arraybufferContent);
+                                done(null);
+                            }
+                        }, 'json');
+
+                    };
+
+                    xhr.onerror = function (e) {
+                        alert('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
+                        //console.log('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
+                    };
+
+                    xhr.send();
+                    //currentImageDownloadXhr = xhr;
+
+                }
+            }, 'json');
+
+        };
+        
+        if ( (contentFromeServer == null) || (pageContentType == null) ){
+            doneGetting(null);
+        } else if (pageContentType == constContentTypeWrite) {
+            getWriteTypesContent(doneGetting);
+        } else {
+            downloadOtherTypesContent(doneGetting);
+        }
+    }
+
+    function isLoadFromLocalStorage() {
+        if (pageLocalStorageContent == null) {
+            return false;
+        }
+        console.log('isLoadFromLocalStorage(pageLocalStorageKey)',pageLocalStorageKey);
+        console.log('isLoadFromLocalStorage(itemId)',itemId);
+        if ( (pageContentType == null) || (pageLocalStorageKey == itemId + pageContentType) ) {
+            if (content != pageLocalStorageContent) {
+                if (confirm('Found item contents in Local Storage.\nWould you like to recover the content from local storage?')) {
+                    pageContentType = pageLocalStorageKey.replace(itemId, '');
+                    console.log('pageContentType from localstorage', pageContentType);
+                    return true;
+                } else {
+                    localStorage.removeItem(pageLocalStorageKey);
+                }
+            }            
+        }
+        return false;
+    }
+              
+}
+
+function saveContentInLocalStorage() {
+    return;
+    if (pageContentType == null) {
+        pageLocalStorageKey = itemId + constContentTypeWrite;
+    } else {
+        pageLocalStorageKey = itemId + pageContentType;    
+    }
+    
+    var current_contents = getCurrentContent();
+    localStorage.setItem(pageLocalStorageKey, current_contents);
+    console.log('pageLocalStorageKey, current_contents', pageLocalStorageKey, current_contents);
+    $( ".btnContentSave" ).removeAttr( "disabled" );
+}
+
