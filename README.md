@@ -31,7 +31,7 @@ To clone and run this repository you'll need [Git](https://git-scm.com) and [Nod
 # Clone this repository
 git clone https://github.com/<Your github account>/bsafes-desktop.git
 # Go into the repository
-cd electronic-wechat
+cd bsafes-desktop
 # Install dependencies and run the app
 npm install && npm start
 ```
@@ -47,9 +47,7 @@ npm run build:win64
 
 
 ```bash
-brew cask install electronic-wechat
+brew cask install bsafes-desktop
 ```
 
-#### [Download Released App](https://github.com/geeeeeeeeek/electronic-wechat/releases)
 
-#### License [MIT](LICENSE.md)
