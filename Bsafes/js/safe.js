@@ -297,6 +297,7 @@ function loadPage() {
                 // get full team list.
                 if (data.hits.total > itemsPerPage) {
                   $.post(server_addr + '/memberAPI/listItems', {
+                    container: currentSpace,
                     size: data.hits.total,
                     from: 0
                   }, function(total_data, textStatus, jQxhr) {
