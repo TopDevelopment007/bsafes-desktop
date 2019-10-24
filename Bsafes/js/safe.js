@@ -165,6 +165,8 @@ function loadPage() {
         window.location.href = makeCallNavigate(trashBoxLink);
     });
 
+    
+
     $("#btnDownload").click(function(e) {
         e.preventDefault();
         showDownloadLoadingIn();

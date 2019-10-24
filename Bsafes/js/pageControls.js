@@ -4023,11 +4023,21 @@ function initContentView(contentFromeServer)
                     };
 
                     xhr.onerror = function (e) {
-                        alert('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
+                        alert('Ooh, please retry! Error occurred when connecing the url : \n', signedURL);
                         //console.log('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
                     };
 
+                    xhr.onreadystatechange = function() {
+                        
+                        if (xhr.status == 400) { // bad request
+                            alert('Ooh, bad data! It is bad URL request : \n', signedURL);
+                            xhr.abort();
+                        } 
+                    };
+
                     xhr.send();
+
+                    
                     //currentImageDownloadXhr = xhr;
 
                 }

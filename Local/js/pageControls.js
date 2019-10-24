@@ -3877,9 +3877,12 @@ function initContentView(contentFromeServer)
 
             //$.post(server_addr + '/memberAPI/preS3Download', {
             dbQueryFileInPageOtherTypesContentFiles(server_addr + '/memberAPI/preS3Download', itemId, s3Key
-            , function(file_name) {
+            , function(err, file_name) {
+
                 console.log('call_preS3Download = ', data.status);
-                if (data.status === 'ok') {
+                if (err) {
+                    alert('It occurred some error when downloading this page.');
+                } else if (data.status === 'ok') {
                     var signedURL = data.signedURL;
                     //console.log('signedURL = ', signedURL);
                     var path = download_folder_path + file_name;
@@ -3970,7 +3973,7 @@ function initContentView(contentFromeServer)
                     //xhr.send();
                     //currentImageDownloadXhr = xhr;
 
-                }
+                } 
             }, 'json');
 
         };

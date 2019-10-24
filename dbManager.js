@@ -231,23 +231,28 @@ function dbUpdatePageStatus(pageId, done)
 			console.log('dbUpdatePageStatus', 'err: not find pageId')
 			error = 'err: not find pageId';
 		} else {
-			if ((row.counterContentsImages > -1) && (row.counterVideos > -1)
-				&& (row.counterImages > -1) && (row.counterAttatchments > -1) && (row.counterOtherTypesContents > -1)) {
-				if ((row.counterContentsImages <= row.downloadedContentsImages) &&
-					(row.counterVideos <= row.downloadedVideos) &&
-					(row.counterImages <= row.downloadedImages) &&
-					(row.counterOtherTypesContents <= row.downloadedOtherTypesContents) &&
-					(row.counterAttatchments <= row.downloadedAttatchments)) {
-
-					db.run("UPDATE " + table + " SET isDownload = 1 WHERE id = ?", row.id);	
-					isCompleted = true;
-				} else {
-				}	
+			if (row.isDownload == -1) {
+				// this means , this page is error.
+				isCompleted = true;
 			} else {
-				// console.log('counterContentsImages', pageId, row.counterContentsImages);
-				// console.log('counterVideos', pageId, row.counterVideos);
-				// console.log('counterImages', pageId, row.counterImages);
-				// console.log('counterAttatchments', pageId, row.counterAttatchments);
+				if ((row.counterContentsImages > -1) && (row.counterVideos > -1)
+					&& (row.counterImages > -1) && (row.counterAttatchments > -1) && (row.counterOtherTypesContents > -1)) {
+					if ((row.counterContentsImages <= row.downloadedContentsImages) &&
+						(row.counterVideos <= row.downloadedVideos) &&
+						(row.counterImages <= row.downloadedImages) &&
+						(row.counterOtherTypesContents <= row.downloadedOtherTypesContents) &&
+						(row.counterAttatchments <= row.downloadedAttatchments)) {
+
+						db.run("UPDATE " + table + " SET isDownload = 1 WHERE id = ?", row.id);	
+						isCompleted = true;
+					} else {
+					}	
+				} else {
+					// console.log('counterContentsImages', pageId, row.counterContentsImages);
+					// console.log('counterVideos', pageId, row.counterVideos);
+					// console.log('counterImages', pageId, row.counterImages);
+					// console.log('counterAttatchments', pageId, row.counterAttatchments);
+				}
 			}
 			
 		}
@@ -323,14 +328,18 @@ function dbQueryFileInPageOtherTypesContentFiles(url, pageId, s3Key, fn) // edi_
 
 	var sql = "SELECT file_name FROM " + table + " WHERE pageId = ? AND s3Key = ?";
 	db.get(sql, [pageId, s3Key], function(err, row) {
+		file_name = '';
 		if (err) {
 			console.log('dbQueryFileInPageOtherTypesContent', err);
 		} else if (row == undefined) {
+			err = 'undefined';
 			console.log('dbQueryFileInPageOtherTypesContent', 'can not find file');
 		} else {
-			fn(row.file_name);
+			file_name = row.file_name;
+			//fn(row.file_name);
 		}
 		console.log('dbQueryFileInPageOtherTypesContent', pageId);
+		fn(err, file_name);
 	});
 }
 
@@ -897,13 +906,16 @@ function dbGetDownloadedCountInItem(itemId, done)
 		} else {
 			var counter = 0;
 			var downloaded = 0;
+			var errors = 0;
 			rows.forEach(function (row) {  
 				counter++;
 				if (row.isDownload == 1) {
 					downloaded++;
+				} else if (row.isDownload == -1) {
+					errors++;
 				} 
 			})
-			done(null, counter, downloaded);
+			done(null, counter, downloaded, errors);
 		}
 		
 	});

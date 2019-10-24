@@ -51,7 +51,7 @@ function interval()
 
             currentPage = arrPageList[0];   
             console.log('currentPage', currentPage);       
-            dbUpdatePageStatus(currentPage, function(isCompleted) {
+            dbUpdatePageStatus(currentPage, function(err, isCompleted) {
                 if (isCompleted) {
                     currentPage = null;
                     return;
@@ -64,7 +64,7 @@ function interval()
 
         });
     } else {
-        dbUpdatePageStatus(currentPage, function(isCompleted) {
+        dbUpdatePageStatus(currentPage, function(err, isCompleted) {
             if (isCompleted) {
                 currentPage = null;
                 return;
@@ -1190,13 +1190,26 @@ function initContentView(contentFromeServer)
                     };
 
                     xhr.onerror = function (e) {
-                        alert('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
-                        //console.log('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
+                        dbUpdatePageStatusWithError(itemId);
+                        //alert('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
+                        console.log('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
+                    };
+
+                    xhr.onreadystatechange = function() {
+                        if (xhr.status == 400) { // bad request
+                            dbUpdatePageStatusWithError(itemId);
+                            xhr.abort();
+                            console.log('Ooh, bad data! It is bad URL request : \n', signedURL);
+                        } else {
+                            //alert('Ooh, bad data! It occurred when requesting : \n', signedURL);
+                        }
                     };
 
                     xhr.send();
                     //currentImageDownloadXhr = xhr;
 
+                } else {
+                    dbUpdatePageStatusWithError(itemId);
                 }
             }, 'json');
 

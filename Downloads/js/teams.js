@@ -228,6 +228,7 @@ function loadPage(){
       	$resultItem.attr('id', teamId);
 				$resultItem.data('position', teamPosition);
 				thisTeamName = DOMPurify.sanitize(thisTeamName);
+        thisTeamName = '<a hre="">' + thisTeamName + '</a>';
         thisType = checkItemType(teamId);
       	$resultItem.find('.itemTitle').html(thisTeamName);
         $resultItem.find('.itemStatus').html(teamStatus);
@@ -340,20 +341,21 @@ function loadPage(){
 		});
 	}
 
-  bSafesPreflight(function(err, key, thisPublicKey, thisPrivateKey, thisSearchKey) {
-      if(err) {
-        alert(err);
-      } else {
-        expandedKey = key;
-				publicKeyPem = thisPublicKey;
-				privateKeyPem = thisPrivateKey;
-				searchKey = thisSearchKey;
+  // bSafesPreflight(function(err, key, thisPublicKey, thisPrivateKey, thisSearchKey) {
+  //     if(err) {
+  //       alert(err);
+  //     } else {
+  //       expandedKey = key;
+		// 		publicKeyPem = thisPublicKey;
+		// 		privateKeyPem = thisPrivateKey;
+		// 		searchKey = thisSearchKey;
 
-				resetPagination();
+		// 		resetPagination();
 
-				listTeams(1);
-      }
-  });
+		// 		listTeams(1);
+  //     }
+  // });
+  listTeams(1);
 
   var arrLogItems = [];
 
@@ -372,12 +374,29 @@ function loadPage(){
       var itemId = $(arrLogItems[0]).attr('id');
       var $item = $(arrLogItems[0]);
       //console.log('itemId', itemId);
-      dbGetDownloadedCountInItem(itemId, function(err, total, downloaded) {
+      dbGetDownloadedCountInItem(itemId, function(err, total, downloaded, errors) {
         if (err) {
           console.log('err: dbGetDownloadedCountInItem', err);
         } else {
-          var status = downloaded + ' / ' + total + '  items';
-          $item.find('.itemStatus').html(status);  
+          var status = '';
+          var remains = total - downloaded - errors;
+
+          if (errors) {
+            status = 'Downloaded : ' + downloaded + ', Errors : ' + errors + ' / Total : ' + total;
+          } else {
+            status = 'Downloaded : ' + downloaded + ' / Total : ' + total;
+          }
+
+          $item.find('.itemStatus').html(status); 
+          if (remains == 0) {
+            $item.find('.itemStatus').addClass('text-success');
+            //$item.find('.progress-bar').addClass('hidden');
+            $item.find('.progress-bar').remove();
+          } else {
+            var percent = (downloaded + errors) * 100 / total;
+            $item.find('.progress-bar').attr('aria-valuenow', percent);
+            $item.find('.progress-bar').css({'width':percent+'%'});
+          }
           arrLogItems.splice( 0, 1 );   
           getItemStatus();   
         }

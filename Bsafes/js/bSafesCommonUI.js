@@ -204,8 +204,40 @@
     $element.LoadingOverlay("hide");
   }
 
+  function showPleaseWait() {
+    
+      if (document.querySelector("#pleaseWaitDialog") == null) {
+          var modalLoading = '<div class="modal" id="pleaseWaitDialog" data-backdrop="static" data-keyboard="false" role="dialog" style="position:fixed">\
+              <div class="modal-dialog" style="width:100%">\
+                  <div class="modal-content">\
+                      <div class="modal-header">\
+                          <h4 class="modal-title">Please wait...</h4>\
+                      </div>\
+                      <div class="modal-body">\
+                          <div class="progress">\
+                            <div class="progress-bar progress-bar-success progress-bar-striped active" role="progressbar"\
+                            aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width:100%; height: 40px">\
+                            </div>\
+                          </div>\
+                      </div>\
+                  </div>\
+              </div>\
+          </div>';
+          $(document.body).append(modalLoading);
+      }
+
+      //$('#pleaseWaitDialog').css('top', window.top.scrollY);
+    
+      $("#pleaseWaitDialog").modal("show");
+  }
+
+  function hidePleaseWait() {
+      $("#pleaseWaitDialog").modal("hide");
+  }
+
   function showDownloadLoadingIn()
   {
+    showPleaseWait();
     $("#btnDownload").LoadingOverlay("show", {
       image       : "",
       fontawesome : "fa fa-circle-o-notch fa-spin",
@@ -216,8 +248,8 @@
   }
 
   function hideDownloadLoadingIn() {
+    hidePleaseWait();
     $("#btnDownload").LoadingOverlay("hide");
-    //$(".spinDownload").LoadingOverlay("hide");    
   };
 
   function showLoading() {
@@ -1456,8 +1488,6 @@ function positionItemNavigationControls() {
   });
 	positionPageControls();
 })();
-
-
 
 
 function downloadSelectedItems(selectedItems)
