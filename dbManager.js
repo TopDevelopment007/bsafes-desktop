@@ -544,7 +544,8 @@ function dbQueryTeamListSameAjax(ajaxUrl, postData, fn) {
 					}
 				});
 				data.hits.total = out_hits.length; 
-				data.hits.hits = out_hits.slice(postData.from, postData.size + 1);
+				//data.hits.hits = out_hits.slice(postData.from, postData.size + 1);
+				data.hits.hits = out_hits.slice(postData.from, postData.from + postData.size);
 				//data.hits.total = arr_tmp.length;
 
 				fn(data);
@@ -665,10 +666,13 @@ function dbQueryItemListSameAjax(ajaxUrl, postData, fn) {
 				data.hits.hits.forEach(function(hit) {
 					if (arr_tmp.includes(hit._id)) {
 						out_hits.push(hit);
+					} else {
+						console.log(hit._id);
 					}
 				});
 				data.hits.total = out_hits.length;
-				data.hits.hits = out_hits.slice(postData.from, postData.size + 1);
+				//data.hits.hits = out_hits.slice(postData.from, postData.size + 1);
+				data.hits.hits = out_hits.slice(postData.from, postData.from + postData.size);
 				//data.hits.total = arr_tmp.length;
 
 				fn(data);
