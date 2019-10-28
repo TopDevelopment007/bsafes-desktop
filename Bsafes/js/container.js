@@ -520,8 +520,9 @@ function loadPage(){
   $("#btnDownload").click(function(e) {
     //$(e.target).trigger('blur');
     e.preventDefault();
+    //showLoadingIn($('#addATeamBtn'));
+    showDownloadLoadingIn();
     downloadSelectedItems(selectedItemList);
-    showLoadingIn($('#addATeamBtn'));
     return false;
   });
 

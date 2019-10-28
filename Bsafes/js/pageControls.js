@@ -1287,7 +1287,7 @@ var downloadAttachment = function(e) {
                     attachmentFileProgress = Math.floor(attachmentFileProgress * 100) / 100;
                     console.log('file progress:', attachmentFileProgress);
                     $attachment.find('.attachmentFileProgress').text(attachmentFileProgress + ' %');
-                    $progress.find('.progress-bar').css('width', attachmentFileProgress + '%');
+                    $progress.find('.progress-bar').css('width', attachmentFileProgress + '%');                    
                 }
             }, false);
 

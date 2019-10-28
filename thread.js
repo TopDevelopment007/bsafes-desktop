@@ -15,6 +15,9 @@ var pageName = '';
 var db = null;
 var lastMsg = null;
 
+var current_down_item = null;
+var logObj = [];
+
 var pageContentType = null;
 var constContentTypeWrite = 'contentType#Write';
 var constContentTypeDraw = 'contentType#Draw';
@@ -231,6 +234,9 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                     pageName = titleText;
 
                     saveLog('< ' + pageName + '> started.');
+                    //if (current_down_item) logObj.push(current_down_item);
+                    current_down_item = {'itemId' : thisItemId, 'itemName' : pageName, logs : [] };
+                    current_down_item.logs.push();
                     //getAndShowPath(thisItemId, envelopeKey, teamName, titleText);
                     getAndShowPath(thisItemId, envelopeKey, titleText);
                     var item_content = '';
@@ -323,6 +329,8 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                                                 if (evt.lengthComputable) {
                                                     var percentComplete = evt.loaded / evt.total * 100;
                                                     $downloadImage.find('.progress-bar').css('width', percentComplete + '%');
+                                                    saveLog('Image downloading : ' + percentComplete + '%', s3Key);
+                                                    console.log('****edi_image download' + s3Key + ':' + percentComplete);
                                                 }
                                             }, false);
 
@@ -350,6 +358,13 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                                                 done(null);
 
                                             }
+
+                                            xhr.onerror = function (e) {
+                                                dbUpdatePageStatusWithError(itemId);
+                                                //alert('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
+                                                console.log('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
+                                                saveLog('Ooh, Error occured');
+                                            };
                                             
                                             xhr.send();
 
@@ -861,7 +876,8 @@ var downloadAttachment = function(id) {
                 if (evt.lengthComputable) {
                     attachmentFileProgress = downloadedFileProgress + (evt.loaded / evt.total * 100) / numberOfChunks;
                     attachmentFileProgress = Math.floor(attachmentFileProgress * 100) / 100;
-                    //console.log('file progress:', attachmentFileProgress);
+                    console.log('******file progress:', id, attachmentFileProgress);
+                    saveLog('Attachment downloading : ' + attachmentFileProgress + '%', id);
                 }
             }, false);
 
@@ -980,12 +996,13 @@ function checkIsCompletedThenSet(pageId)
         if ( (!err) && (isCompleted) ){
             console.info('!!!_complete_checkIsCompletedThenSet (pageId = )', pageId);
             saveLog('< ' + pageName + ' > finished.');
+            
             currentPage = null;
         }
     });
 }
 
-function saveLog(message, isDevMsg=false)
+function saveLog(message, skey='', isDevMsg=false)
 {
     var logMesage;
     var isDev;
@@ -1000,6 +1017,7 @@ function saveLog(message, isDevMsg=false)
             var letter = {};
             letter.logTime = moment().format('YYYY-MM-DD hh:mm');
             letter.message = message;
+            letter.skey = skey;
             ipcRenderer.send( "sendDownloadMessage", letter );
             lastMsg = message;
         }
@@ -1193,6 +1211,7 @@ function initContentView(contentFromeServer)
                         dbUpdatePageStatusWithError(itemId);
                         //alert('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
                         console.log('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
+                        saveLog('Ooh, Error occured');
                     };
 
                     xhr.onreadystatechange = function() {

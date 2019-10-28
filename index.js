@@ -19,7 +19,8 @@ let thread_win;
 global.sqliteDB = db;
 global.loginUserId = loginUserId;
 global.logMesage = [];
-global.isDev = false;
+global.isDev = true;
+global.navigateFolder = 'bsafes';
 
 function createWindow () {
   // Create the browser window.
@@ -43,7 +44,10 @@ function createWindow () {
     slashes: true
   }))
 
-  
+  win.webContents.executeJavaScript('localStorage.setItem("bsafes_last_url", ""); localStorage.setItem("local_last_url", "");', true)
+  .then((result) => {
+    //console.log(result);
+  })
 
   // clear cache.
   let session = win.webContents.session;
@@ -223,4 +227,8 @@ ipcMain.on( "sendDownloadMessage", ( event, message ) => {
 
 ipcMain.on( "clearDownloadLogs", ( event, message ) => {
   //global.logMesage = [];
+} );
+
+ipcMain.on( "setNavigateFolder", ( event, myGlobalVariableValue ) => {
+  global.navigateFolder = myGlobalVariableValue;
 } );

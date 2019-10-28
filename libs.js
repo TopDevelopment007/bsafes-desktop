@@ -4,6 +4,7 @@ var forge = require('node-forge');
 var ejse = require ("electron").remote.require('ejs-electron');
 var BSON = require('bson');
 var remote = require ("electron").remote;
+var ipcRenderer = require ("electron").ipcRenderer;
 var moment = require('moment');
 
 function makeCallNavigate(link)
@@ -13,9 +14,9 @@ function makeCallNavigate(link)
 	return href;
 }
 
-function navigateView(view)
+function navigateView(goto_view)
 {
-
+	var view = goto_view;
 	const remote = require ("electron").remote;
 	//const app = require('electron').remote.app
 	const url = require('url');
@@ -84,14 +85,24 @@ function navigateView(view)
 			break;
 	}
 
+	// set <bsafes_last_url>, <local_last_url>
+	if (remote.getGlobal('navigateFolder') == 'bsafes') {
+		__dirname = __dirname + '/../../BSafes/views/';
+		localStorage.setItem('bsafes_last_url', goto_view);
+	} else if (remote.getGlobal('navigateFolder') == 'local') {
+		__dirname = __dirname + '/../../Local/views/';
+		localStorage.setItem('local_last_url', goto_view);
+	} 
+	//console.log('view = ', view);
 	const remote_win = remote.getCurrentWindow ();
 
 	remote_win.loadURL(url.format({
 	    pathname: path.join(__dirname, view),
 	    protocol: 'file:',
 	    slashes: true
-	  }));
+	}));
 
+	
 }
 
 function checkItemType(itemId)
@@ -152,18 +163,31 @@ function showErrorMessage(jqXHR)
 }
 $('.btnBSafes').click(function(e) {
 
-	// check whether keys existed in localstorage.
-	if ( ("encodedGold" in localStorage) && ("publicKey" in localStorage) && ("encodedPrivateKeyEnvelope" in localStorage) && ("encodedEnvelopeIV" in localStorage)) {
-		navigateView('../../BSafes/views/teams.ejs');
+	ipcRenderer.send( "setNavigateFolder", 'bsafes' );
+
+	var last_url = localStorage.getItem('bsafes_last_url');
+	if (last_url) {
+		navigateView(last_url);
 	} else {
 		navigateView('../../BSafes/views/managedMemberSignIn.ejs');
 	}
 })
 
 $('.btnLocal').click(function(e) {
-	navigateView('../../Local/views/teams.ejs');
+
+	ipcRenderer.send( "setNavigateFolder", 'local' );
+
+	var last_url = localStorage.getItem('local_last_url');
+	if (last_url) {
+		navigateView(last_url);
+	} else {
+		navigateView('../../Local/views/teams.ejs');
+	}
 })
 
 $('.btnDownloads').click(function(e) {
+	
+	ipcRenderer.send( "setNavigateFolder", 'download' );
+
 	navigateView('../../Downloads/views/downloads.ejs');
 })

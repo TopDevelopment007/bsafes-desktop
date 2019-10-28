@@ -103,7 +103,8 @@ function bSafesPreflight(fn) {
         } else if (data.status === 'locked') {
             lockBSafes("byServer");
         } else {
-            window.location.replace('/');
+            //window.location.replace('/');
+            window.location.replace('../../BSafes/views/managedMemberSignIn.ejs');
         }
     }, 'json');
 }

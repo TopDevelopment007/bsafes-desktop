@@ -1192,7 +1192,7 @@ function showDownloadItemsModal() {
   //     })
   //   }
   // })
-  function displayLogMesaage()
+  function displayLogMessage_old()
   {
     $('.modal-body').empty();
     var logs = require('electron').remote.getGlobal('logMesage');
@@ -1204,10 +1204,44 @@ function showDownloadItemsModal() {
       $('.modal-body').append($moveItemsPathItem);
     })  
 
-    setTimeout(displayLogMesaage, 2000);
+    setTimeout(displayLogMessage, 2000);
+  }
+
+  var last_log_index = 0;
+  function displayLogMessage()
+  {
+    //$('.modal-body').empty();
+    var logs = require('electron').remote.getGlobal('logMesage');
+    console.log('logs', logs.length);
+    console.log('last_log_index', last_log_index);
+    
+    if (last_log_index < logs.length) {
+      new_logs = logs.slice(last_log_index, logs.length);
+      last_log_index = logs.length
+      new_logs.forEach(function(logMsg) {
+        //$skey = $("span").find("[skey='" + logMsg.skey + "']"); 
+        console.log($('.log_txt[skey="' + logMsg.skey + '"]').length);
+        $('.log_txt[skey="' + logMsg.skey + '"]').parent().parent().parent().remove();
+        //if (logMsg.skey == '' || $skey.length == 0)
+        {
+          var $moveItemsPathItem = $('.moveItemsPathRow').clone().removeClass('moveItemsPathRow hidden').addClass('moveItemsPathItem');
+          $moveItemsPathItem.find('.log_time').text(logMsg.logTime);
+          $moveItemsPathItem.find('.log_txt').text(logMsg.message);
+          if (logMsg.skey != '') {
+            $moveItemsPathItem.find('.log_txt').attr("skey", logMsg.skey);  
+          }
+
+          $('.modal-body').prepend($moveItemsPathItem);
+        } 
+        
+      })  
+    }
+      
+
+    setTimeout(displayLogMessage, 2000);
   }
   
-  displayLogMesaage();
+  displayLogMessage();
 
 }
 

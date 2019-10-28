@@ -1022,4 +1022,7 @@ function loadPage(){
 				}
 			}
 	});
+
+  // remove prev & next button
+  $('.turningPageRow').addClass('hidden');
 };

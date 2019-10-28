@@ -5,7 +5,14 @@
     memberSignedOut = true;
   });
 
+	// clear & restore <bsafes_last_url> and <local_last_url>
+
+	var bsafes_last_url = localStorage.getItem("bsafes_last_url"); 
+	var local_last_url = localStorage.getItem("local_last_url");
 	localStorage.clear();	
+	localStorage.setItem("bsafes_last_url", bsafes_last_url); 
+	localStorage.setItem("local_last_url", local_last_url);
+
 	$.post(server_addr + '/isMemberSignedIn', {
 	}, function(data, textStatus, jQxhr ){
 		if(data.status === 'yes') {

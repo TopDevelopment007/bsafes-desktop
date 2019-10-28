@@ -88,9 +88,6 @@ $('.btnLocal').click(function(e) {
 	navigateView('../../Local/views/teams.ejs');
 })
 
-// $("#btnDownload").click(function(e) {
-// 	downloadSelectedItems();
-// })
 
 function jsonToBinary(json)
 {

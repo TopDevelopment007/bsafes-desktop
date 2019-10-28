@@ -3169,6 +3169,9 @@ function initializePageControls() {
 
 ////////
 
+// remove prev & next button
+$('.turningPageRow').addClass('hidden');
+
 function showCanvasLoadingPage(){            
     $(".froala-editor").LoadingOverlay("show", {
         image: "",

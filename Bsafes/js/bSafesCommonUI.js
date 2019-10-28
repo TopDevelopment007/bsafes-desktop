@@ -211,9 +211,14 @@
               <div class="modal-dialog" style="width:100%">\
                   <div class="modal-content">\
                       <div class="modal-header">\
-                          <h4 class="modal-title">Please wait...</h4>\
+                          <h4 class="modal-title">Counting pages. Please wait...</h4>\
                       </div>\
                       <div class="modal-body">\
+                          <div class="status">\
+                            <span>The number of pages to check : </span><span class="remainNumber text-info"></span>\
+                            <br />\
+                            <span>Total pages to download : </span><span class="totalNumber text-primary"></span>\
+                          </div>\
                           <div class="progress">\
                             <div class="progress-bar progress-bar-success progress-bar-striped active" role="progressbar"\
                             aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width:100%; height: 40px">\
@@ -226,9 +231,8 @@
           $(document.body).append(modalLoading);
       }
 
-      //$('#pleaseWaitDialog').css('top', window.top.scrollY);
-    
       $("#pleaseWaitDialog").modal("show");
+
   }
 
   function hidePleaseWait() {
@@ -1073,7 +1077,7 @@ function createANewItem(currentContainer, selectedItemType, addAction, $addTarge
 						//window.location.href = link;
             window.location.href = makeCallNavigate(link);
 					}, 1500);	
-/*
+  /*
           if(thisAddAction === "addAnItemOnTop") {
 						setTimeout(listAllItems, 1500);
           } else if(thisAddAction === "addAnItemBefore") {
@@ -1081,7 +1085,7 @@ function createANewItem(currentContainer, selectedItemType, addAction, $addTarge
           } else {
             $addTargetItem.after($resultItem);
           }
-*/
+  */
         }
       }, 'json');
 
@@ -1454,7 +1458,7 @@ function positionItemNavigationControls() {
 			var w = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
     	var rightMargin = (w - panelWidth)/2;
     	$(".btnFloatingWrite, .btnFloatingSave, .btnFloatingCancel").css("right", rightMargin + "px");
-/*
+  /*
 			$nextPageBtn = $('#nextPageBtn');
 			rightMargin = margin - 24;	
 			$nextPageBtn.css("right", rightMargin + "px");
@@ -1462,7 +1466,7 @@ function positionItemNavigationControls() {
 			$previousPageBtn = $('#previousPageBtn');
 			var leftMargin = margin - 24 ;
 			$previousPageBtn.css("left", leftMargin + "px"); 
-*/
+  */
   	}
 	}
 
@@ -1489,10 +1493,12 @@ function positionItemNavigationControls() {
 	positionPageControls();
 })();
 
-
+var expandedKey;
+var totalNumber = 0;
 function downloadSelectedItems(selectedItems)
 {
   dbAddDownloadsItemsInLogs(selectedItems);
+
   var ipcRenderer = require( "electron" ).ipcRenderer;
   ipcRenderer.send( "clearDownloadLogs", null );
 
@@ -1500,10 +1506,27 @@ function downloadSelectedItems(selectedItems)
   for(var i=0; i<selectedItems.length; i++) {
     arrList.push(selectedItems[i].id);
   }
+  
+  // dbQueryInfo(server_addr + '/memberAPI/preflight', {
+  //   sessionResetRequired: false
+  // }, function(data, textStatus, jQxhr ){
+  //   if(data.status === 'ok'){
+  //     expandedKey = data.expandedKey;
+  //     downloadItemByItemID(arrList, function() {
+  //         hideDownloadLoadingIn();
+  //     });
+  //   }
+  // }, 'json');
+  totalNumber = 0;
+  $('.remainNumber').html('0');
+  $('.totalNumber').html('0');
 
   downloadItemByItemID(arrList, function() {
+    //hideDownloadLoadingIn();
+    setTimeout(function() {
       hideDownloadLoadingIn();
-      //$('#downloadModal').modal('hide');
+    }, 3000);
+      
   });
 }
 
@@ -1516,6 +1539,7 @@ async function downloadItemByItemID(arrList, done)
   var itemID = '';
 
   //console.log('downloadItemByItemID', itemID);
+
   if (arrList.length < 1) {
     //console.log('finished', arrList);
     done();
@@ -1523,6 +1547,9 @@ async function downloadItemByItemID(arrList, done)
   }
 
   itemID = arrList[0];
+
+  $('.remainNumber').html(arrList.length);
+
   dbInsertDownloadList(itemID);
 
   var itemType = checkItemType(itemID);
@@ -1537,6 +1564,8 @@ async function downloadItemByItemID(arrList, done)
 
   if (itemType == 'page') {
     //dbInsertPages(itemID);
+    totalNumber++;
+    $('.totalNumber').html(totalNumber);
     await setContainerAndTeamOfPage(itemID);
     arrList.splice( arrList.indexOf(itemID), 1 );
     downloadItemByItemID(arrList, done);
@@ -1658,45 +1687,6 @@ function downloadListAndPage(itemId, fn) {
   }
 };
 
-/*
-function checkItemType(itemId)
-{
-  var itemType = itemId.split(':')[0];
-  var retType = '';
-
-  switch(itemType) {
-    case 't1': // team       
-      retType = 'team';
-      break;
-    case 'p':
-      retType = 'page';
-      break;
-    case 'f': // folder
-      retType = 'container';
-      break;
-    case 'b': // box
-      retType = 'container';
-      break;
-    case 'n': // notebook
-      retType = 'container';
-      break;
-    case 'np': // notebook/p/
-      retType = 'page';
-      break;
-    case 'd': // diary
-      retType = 'container';
-      break;
-    case 'dp': // diary/p/
-      retType = 'page';
-      break;
-    default:
-      retType = 'skip';
-      break;
-  }
-
-  return retType;
-}
-*/
 
 async function setContainerAndTeamOfPage(pageId) 
 {
@@ -1706,6 +1696,19 @@ async function setContainerAndTeamOfPage(pageId)
        function(data, textStatus, jQxhr) { 
          if (data.status == 'ok') {
             var item = data.item;
+
+            // get page title
+            // itemKey = decryptBinaryString(item.keyEnvelope, expandedKey, item.envelopeIV);
+            // itemIV = decryptBinaryString(item.ivEnvelope, expandedKey, item.ivEnvelopeIV);
+            // if (item) {
+            //   if (item.title) {
+            //     var encodedTitle = decryptBinaryString(item.title, itemKey, itemIV);
+            //     title = forge.util.decodeUtf8(encodedTitle);
+
+            //     $('.itemNumber').html('Counting item : ' + title);
+            //   }
+            // }
+
             var itemSpace = item.space;
             var itemSpaceParts = itemSpace.split(':');
             itemSpaceParts.splice(-2, 2);

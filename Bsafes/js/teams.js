@@ -132,7 +132,7 @@ function loadPage(){
 
   });
 
-/*** End of creating an team ***/
+  /*** End of creating an team ***/
 
   var handleAddAction = function(e) {
     $addTargetTeam = $(e.target).closest('.resultItem');
