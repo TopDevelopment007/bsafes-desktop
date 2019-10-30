@@ -1221,7 +1221,7 @@ function showDownloadItemsModal() {
       new_logs.forEach(function(logMsg) {
         //$skey = $("span").find("[skey='" + logMsg.skey + "']"); 
         console.log($('.log_txt[skey="' + logMsg.skey + '"]').length);
-        $('.log_txt[skey="' + logMsg.skey + '"]').parent().parent().parent().remove();
+        $('.log_txt[skey="' + logMsg.skey + '"]').parent().parent().parent().parent().remove();
         //if (logMsg.skey == '' || $skey.length == 0)
         {
           var $moveItemsPathItem = $('.moveItemsPathRow').clone().removeClass('moveItemsPathRow hidden').addClass('moveItemsPathItem');
@@ -1236,9 +1236,20 @@ function showDownloadItemsModal() {
         
       })  
     }
+
+    var isStopped = require('electron').remote.getGlobal('isStopped');
+    if (isStopped) {
+      $('.resumeBtn').removeClass('hidden');
+      $('.stopBtn').addClass('hidden');
+      
+    } else {
+      $('.stopBtn').removeClass('hidden');
+      $('.resumeBtn').addClass('hidden');
+    }
       
 
     setTimeout(displayLogMessage, 2000);
+    
   }
   
   displayLogMessage();

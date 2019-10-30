@@ -274,6 +274,22 @@ function loadPage(){
           handleDeleteAction(e);
           return false;
         });
+
+        $resultItem.find('.resumeBtn').click(function(e) {
+          e.preventDefault();
+          $('.stopBtn').removeClass('hidden');
+          $('.resumeBtn').addClass('hidden');
+          ipcRenderer.send( "setDownloadStatus", false );
+          return false;
+        });
+
+        $resultItem.find('.stopBtn').click(function(e) {
+          e.preventDefault();
+          $('.resumeBtn').removeClass('hidden');
+          $('.stopBtn').addClass('hidden');
+          ipcRenderer.send( "setDownloadStatus", true );
+          return false;
+        });
  
       	$('.resultItems').append($resultItem);
 			}
@@ -392,6 +408,8 @@ function loadPage(){
             $item.find('.itemStatus').addClass('text-success');
             //$item.find('.progress-bar').addClass('hidden');
             $item.find('.progress-bar').remove();
+            $item.find('.btn-group-status').remove();
+
           } else {
             var percent = (downloaded + errors) * 100 / total;
             $item.find('.progress-bar').attr('aria-valuenow', percent);
