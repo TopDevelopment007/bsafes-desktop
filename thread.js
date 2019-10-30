@@ -11,6 +11,7 @@ var rsa = forge.pki.rsa;
 var privateKeyPem;
 var arrPage = [];
 var currentPage = null;
+var stoppedPage = null;
 var pageName = '';
 var db = null;
 var lastMsg = null;
@@ -25,25 +26,39 @@ var constContentTypeSpreadsheet = 'contentType#Spreadsheet';
 var constContentTypeDoc = 'contentType#Doc';
 var constContentTypeMxGraph = 'contentType#MxGraph';
 
+var isSopped = false;
+
 setInterval(interval, 5000);
 
 function interval()
 {
-	//console.log('timer');
+	if (require('electron').remote == undefined) {
+        return;
+    }
+
 	if (db == null) {
-		if (require('electron').remote != undefined) {
-			db = require('electron').remote.getGlobal('sqliteDB');
-			setSQLiteDB(db);
-		} else {
-			return;
-		}		
+		db = require('electron').remote.getGlobal('sqliteDB');
+		setSQLiteDB(db);
+		
 	}
     console.log('_______arrPage', arrPage.length);
     console.log('____currentPage', currentPage);
     console.log('____currentPageName', pageName);
 
+    var isStopped = require('electron').remote.getGlobal('isStopped');
 
-    if (currentPage == null)
+    if (isStopped) {
+        console.log('stopped..');
+        return;
+    }
+
+    if (stoppedPage) {
+        console.log('resume the stoppedPage...');
+        currentPage = stoppedPage;
+        stoppedPage = null;
+        downloadPage(currentPage);
+
+    } else if (currentPage == null)
     {
         dbGetDownloadsListFromPages(function(arrPageList){
             arrPage = arrPageList;
@@ -74,6 +89,22 @@ function interval()
             } 
         });
     }
+}
+
+function processErrors(jqXHR)
+{
+    var msg;
+    if(jqXHR.status==0) { // internet connection broke  
+        msg = 'internet connection broke';
+        console.log(msg);
+        stoppedPage = currentPage;
+        ipcRenderer.send( "setDownloadStatus", true );
+    } else if(jqXHR.status==500) { // internal server error
+        msg = 'internal server error';
+    } else {
+        msg = 'unknow error';
+    }
+
 }
 
 function downloadPage(pageId) 
@@ -153,6 +184,9 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
             } else {
             	console.log('err_getPageComments', 'none');
             }
+        })
+        .fail(function(jqXHR, textStatus, errorThrown){
+            processErrors(jqXHR);
         });
     } // end function
     
@@ -364,6 +398,7 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                                                 //alert('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
                                                 console.log('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
                                                 saveLog('Ooh, Error occured');
+                                                processErrors(null);
                                             };
                                             
                                             xhr.send();
@@ -539,7 +574,10 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
             done(data.error, null)
         }
         
-    }, 'json');
+    }, 'json')
+    .fail(function(jqXHR, textStatus, errorThrown){
+        processErrors(jqXHR);
+    });
 }
 
 
@@ -556,7 +594,10 @@ function getTeamData(teamId, done) {
 			done(data.error, null);
       		console.log('err:(getTeamData)', data.error);
 		}
-	}, 'json');
+	}, 'json')
+    .fail(function(jqXHR, textStatus, errorThrown){
+        processErrors(jqXHR);
+    });
 };	
 
 var pkiDecrypt = function(encryptedData) {
@@ -577,7 +618,10 @@ function getPath(itemId, pageId, done) {
 		} else {
             console.log('err5');
         }
-	});
+	})
+    .fail(function(jqXHR, textStatus, errorThrown){
+        processErrors(jqXHR);
+    });
 };
 
 //function getAndShowPath(itemId, envelopeKey, teamName, endItemTitle) {
@@ -591,7 +635,10 @@ function getAndShowPath(itemId, envelopeKey, endItemTitle) {
 		} else {
             console.log('err6');
         }
-	}, 'json');
+	}, 'json')
+    .fail(function(jqXHR, textStatus, errorThrown){
+        processErrors(jqXHR);
+    });
 }
 
 function downloadContentImageObjects(item_content, itemId) {
@@ -636,6 +683,7 @@ function downloadImageObject(encryptedImageElement, itemId) {
     }, function(data, textStatus, jQxhr) {
         if (data.status === 'ok') {
             var signedURL = data.signedURL;
+            var isDownloaded = false;
 
             var xhr = new XMLHttpRequest();
             xhr.open('GET', signedURL, true);
@@ -652,6 +700,8 @@ function downloadImageObject(encryptedImageElement, itemId) {
             xhr.onload = function(e) {
 				var buffer = this.response;
 				var file_name = uuidv1();
+                isDownloaded = true;
+
 				fs.open(download_folder_path + file_name, 'w', function(err, fd) {
 				    if (err) {
 				        throw 'could not open file: ' + err;
@@ -689,14 +739,27 @@ function downloadImageObject(encryptedImageElement, itemId) {
                     } else {
                         console.log('err6');
                     }
-                }, 'json');
+                }, 'json')
+                .fail(function(jqXHR, textStatus, errorThrown){
+                    processErrors(jqXHR);
+                });;
             }
             ;
+            xhr.onerror = function (e) {
+                dbUpdatePageStatusWithError(itemId);
+                //alert('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
+                console.log('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
+                saveLog('Ooh, Error occured');
+                if (isDownloaded) processErrors(null);
+            };
 
             xhr.send();
 
         }
-    }, 'json');
+    }, 'json')
+    .fail(function(jqXHR, textStatus, errorThrown){
+        processErrors(jqXHR);
+    });
 }
 
 function downloadVideoObject($videoDownload) {
@@ -790,7 +853,10 @@ function downloadVideoObject($videoDownload) {
         } else {
             console.log('err6');
         }
-    }, 'json');
+    }, 'json')
+    .fail(function(jqXHR, textStatus, errorThrown){
+        processErrors(jqXHR);
+    });
 }
 ;
 function handleVideoObjects(item_content, itemId) {
@@ -971,8 +1037,9 @@ var downloadAttachment = function(id) {
             } else {
                 console.log('err6');
             }
-        }, 'json').fail(function() {
-            enableResume();
+        }, 'json')
+        .fail(function(jqXHR, textStatus, errorThrown){
+            processErrors(jqXHR);
         });
         ;
     }
@@ -1230,7 +1297,10 @@ function initContentView(contentFromeServer)
                 } else {
                     dbUpdatePageStatusWithError(itemId);
                 }
-            }, 'json');
+            }, 'json')
+            .fail(function(jqXHR, textStatus, errorThrown){
+                processErrors(jqXHR);
+            });
 
         };
         
