@@ -21,6 +21,7 @@ global.loginUserId = loginUserId;
 global.logMesage = [];
 global.isDev = true;
 global.navigateFolder = 'bsafes';
+global.isStopped = false;
 
 function createWindow () {
   // Create the browser window.
@@ -219,6 +220,10 @@ ipcMain.on('show-message', (event, msg) => {
 
 ipcMain.on( "setMyGlobalVariable", ( event, myGlobalVariableValue ) => {
   global.loginUserId = myGlobalVariableValue;
+} );
+
+ipcMain.on( "setDownloadStatus", ( event, isStopped ) => {
+  global.isStopped = isStopped;
 } );
 
 ipcMain.on( "sendDownloadMessage", ( event, message ) => {
