@@ -97,7 +97,7 @@ function interval()
 function processErrors(jqXHR)
 {
     var msg;
-    if(jqXHR.status==0) { // internet connection broke  
+    if(jqXHR == null || jqXHR.status==0) { // internet connection broke  
         msg = 'internet connection broke';
         console.log(msg);
         stoppedPage = currentPage;
@@ -1011,7 +1011,8 @@ var downloadAttachment = function(id) {
                 console.log('isDownloaded:', isDownloaded);
                 if (isDownloaded)
                     return;
-                enableResume();
+                //enableResume();
+                processErrors(null);
             }
             ;
 
