@@ -1237,18 +1237,7 @@ function showDownloadItemsModal() {
       })  
     }
 
-    var isStopped = require('electron').remote.getGlobal('isStopped');
-    if (isStopped) {
-      $('.resumeBtn').removeClass('hidden');
-      $('.stopBtn').addClass('hidden');
-      
-    } else {
-      $('.stopBtn').removeClass('hidden');
-      $('.resumeBtn').addClass('hidden');
-    }
-      
-
-    setTimeout(displayLogMessage, 2000);
+    setTimeout(displayLogMessage, 1000);
     
   }
   

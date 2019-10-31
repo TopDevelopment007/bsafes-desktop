@@ -28,7 +28,7 @@ var constContentTypeMxGraph = 'contentType#MxGraph';
 
 var isSopped = false;
 
-setInterval(interval, 5000);
+setInterval(interval, 2000);
 
 function interval()
 {
@@ -44,12 +44,15 @@ function interval()
     console.log('_______arrPage', arrPage.length);
     console.log('____currentPage', currentPage);
     console.log('____currentPageName', pageName);
+    console.log('____stoppedPage', stoppedPage);
 
     var isStopped = require('electron').remote.getGlobal('isStopped');
 
     if (isStopped) {
-        console.log('stopped..');
+        console.log('stopped...');
         return;
+    } else {
+        console.log('running...')
     }
 
     if (stoppedPage) {

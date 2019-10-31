@@ -277,16 +277,16 @@ function loadPage(){
 
         $resultItem.find('.resumeBtn').click(function(e) {
           e.preventDefault();
-          $('.stopBtn').removeClass('hidden');
-          $('.resumeBtn').addClass('hidden');
+          //$('.stopBtn').removeClass('hidden');
+          //$('.resumeBtn').addClass('hidden');
           ipcRenderer.send( "setDownloadStatus", false );
           return false;
         });
 
         $resultItem.find('.stopBtn').click(function(e) {
           e.preventDefault();
-          $('.resumeBtn').removeClass('hidden');
-          $('.stopBtn').addClass('hidden');
+          //$('.resumeBtn').removeClass('hidden');
+          //$('.stopBtn').addClass('hidden');
           ipcRenderer.send( "setDownloadStatus", true );
           return false;
         });
@@ -387,6 +387,17 @@ function loadPage(){
       if (arrLogItems.length == 0) {
         return;
       }
+
+      var isStopped = require('electron').remote.getGlobal('isStopped');
+      if (isStopped) {
+        $('.resumeBtn').removeClass('hidden');
+        $('.stopBtn').addClass('hidden');
+        
+      } else {
+        $('.stopBtn').removeClass('hidden');
+        $('.resumeBtn').addClass('hidden');
+      }
+
       var itemId = $(arrLogItems[0]).attr('id');
       var $item = $(arrLogItems[0]);
       //console.log('itemId', itemId);
@@ -416,10 +427,13 @@ function loadPage(){
             $item.find('.progress-bar').css({'width':percent+'%'});
           }
           arrLogItems.splice( 0, 1 );   
-          getItemStatus();   
+          //getItemStatus();   
+          setTimeout(getItemStatus, 1000);
         }
       });
     }
+
+
 
     getItemStatus();
     
