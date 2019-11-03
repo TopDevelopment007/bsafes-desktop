@@ -1,4 +1,4 @@
-const {app, BrowserWindow, ipcMain} = require('electron')
+const {app, BrowserWindow, ipcMain, dialog} = require('electron')
 const path = require('path')
 const url = require('url')
 const fs = require('fs')
@@ -22,6 +22,9 @@ global.logMesage = [];
 global.isDev = true;
 global.navigateFolder = 'bsafes';
 global.isStopped = false;
+global.logModal = '';
+
+
 
 function createWindow () {
   // Create the browser window.
@@ -169,9 +172,6 @@ function initSQLiteDB()
       
     });
 
-    //threads.downloadPages(db);
-    //threads.downloadPages('p:mF_hRPgswTh1se8DuWy6762ojHUWOvn6dch4KIvaIo4flg=-1558941669974:1:1559177877327');
-
   })  
   
 }
@@ -224,16 +224,54 @@ ipcMain.on( "setMyGlobalVariable", ( event, myGlobalVariableValue ) => {
 
 ipcMain.on( "setDownloadStatus", ( event, isStopped ) => {
   global.isStopped = isStopped;
+
+  if (isStopped) {
+    const err_dlg_options = {
+      type: 'error',
+      buttons: ['Ok'],
+      defaultId: 2,
+      title: 'Error',
+      message: 'Ohh, Network connection has broken. Please Check it out.',
+      detail: '',
+    };
+
+    dialog.showMessageBox(null, err_dlg_options, (response, checkboxChecked) => {
+      console.log(response);
+      console.log(checkboxChecked);
+    });
+  }
+} );
+
+ipcMain.on( "saveLogModal", ( event, modal ) => {
+  global.logModal = modal;
 } );
 
 ipcMain.on( "sendDownloadMessage", ( event, message ) => {
   global.logMesage.push(message);  
 } );
 
-ipcMain.on( "clearDownloadLogs", ( event, message ) => {
-  //global.logMesage = [];
+ipcMain.on( "sliceDownloadLogs", ( event, index ) => {
+  var tmp_log = global.logMesage;
+  global.logMesage = tmp_log.slice(index);
 } );
 
 ipcMain.on( "setNavigateFolder", ( event, myGlobalVariableValue ) => {
   global.navigateFolder = myGlobalVariableValue;
+} );
+
+ipcMain.on( "showErrDialong", ( event, myGlobalVariableValue ) => {
+
+  // const err_dlg_options = {
+  //   type: 'error',
+  //   buttons: ['Ok'],
+  //   defaultId: 2,
+  //   title: 'Error',
+  //   message: 'Ohh, Network connection has broken. Please Check it out.',
+  //   detail: '',
+  // };
+
+  // dialog.showMessageBox(null, err_dlg_options, (response, checkboxChecked) => {
+  //   console.log(response);
+  //   console.log(checkboxChecked);
+  // });
 } );

@@ -1600,7 +1600,7 @@ async function getTeamDataInTeams(teamId) {
       if(data.status === 'ok') {
         dbInsertTeams(server_addr + '/memberAPI/getTeamData', teamId, data, isDownload);
       } else {
-        console.log('err:(getTeamDataInTeams)', data.err);
+        //console.log('err:(getTeamDataInTeams)', data.err);
       }
       resolve();
     }, 'json');

@@ -64,7 +64,7 @@ function dbInsertTeams(url, teamId, data, isDownload=0) // edi_ok
 		} else {
 			db.run("UPDATE " + table + " SET jsonData = ?, isDownload = ? WHERE id = ?", blobData, isDownload, row.id);
 		}
-		console.log('dbInsertTeams', teamId);
+		//console.log('dbInsertTeams', teamId);
 	});
 }
 
@@ -82,7 +82,7 @@ function dbUpdateDownloadStatusTeam(teamId) // edi_ok
 		} else {
 			db.run("UPDATE " + table + " SET isDownload = 1 WHERE id = ?", row.id);
 		}
-		console.log('dbInsertTeams', teamId);
+		//console.log('dbInsertTeams', teamId);
 	});
 }
 
@@ -101,7 +101,7 @@ function dbInsertContainers(url, containerId, data, isDownload=0) // edi_ok
 		} else {
 			db.run("UPDATE " + table + " SET jsonData = ?, isDownload = ? WHERE id = ?", blobData, isDownload, row.id);
 		}
-		console.log('dbInsertContainers', containerId);
+		//console.log('dbInsertContainers', containerId);
 	});
 }
 
@@ -119,7 +119,7 @@ function dbInsertPages(pageId) // edi_ok
 		} else {
 			db.run("UPDATE " + table + " SET pageId = ?, isDownload = ? WHERE id = ?", pageId, 0, row.id);
 		}
-		console.log('dbInsertPages', pageId);
+		//console.log('dbInsertPages', pageId);
 	});
 }
 
@@ -136,7 +136,7 @@ function dbSetContainerAndTeamOfPage(pageId, teamId, containerId)
 			db.run('DELETE FROM ' + table + ' WHERE id=?', row.id);
 		}	
 		db.run("INSERT INTO " + table + " (pageId, containerId, teamId) VALUES (?, ?, ?)", pageId, containerId, teamId);	
-		console.log('dbSetContainerAndTeamOfPage', pageId);
+		//console.log('dbSetContainerAndTeamOfPage', pageId);
 	});
 }
 
@@ -161,7 +161,7 @@ function dbSetTotalCountersOfPage(pageId, type, counter)
 			    if (err) {
 			      console.log('err_dbSetTotalCountersOfPage', err.message);
 			  	} 
-			  	console.log('dbSetTotalCountersOfPage', pageId, type, counter);
+			  	//console.log('dbSetTotalCountersOfPage', pageId, type, counter);
 		    });
 		}
 		//console.log('dbSetTotalCountersOfPage', pageId, type, counter);
@@ -189,7 +189,7 @@ function dbIncreaseDownloadedCountersOfPage(pageId, type, done)
 			db.run("UPDATE " + table + " SET " + field + " = " + field + " + 1 WHERE id = ?", row.id);
 		}
 		done();
-		console.log('dbIncreaseDownloadedCountersOfPage', pageId);
+		//console.log('dbIncreaseDownloadedCountersOfPage', pageId);
 	});
 }
 
@@ -213,10 +213,76 @@ function dbCheckPageTotalCounters(pageId, done)
 			
 		}
 	});
+}
 
+function dbCheckPageOnlyAttachment(pageId, done)
+{
+	var table = 'pages';
+	var sql = "SELECT * FROM " + table + " WHERE pageId = ?";
+
+	db.get(sql, [pageId], function(err, row) {
+		if (err) {
+			console.log('dbCheckPageTotalCounters', err)
+		} else if (row == undefined) {
+			console.log('dbCheckPageTotalCounters', 'err: not find pageId', pageId)
+		} else {
+			if ((row.counterContentsImages == -1) || (row.counterVideos == -1)
+				|| (row.counterImages == -1) || (row.counterAttatchments == -1) || (row.counterOtherTypesContents == -1)) {
+				done(false);
+			} else {
+				done(true);
+			}
+			
+		}
+	});
 }
 
 function dbUpdatePageStatus(pageId, done)
+{
+	var table = 'pages';
+	var sql = "SELECT * FROM " + table + " WHERE pageId = ?";
+	var error = null;
+	var isCompleted = false;
+
+	db.get(sql, [pageId], function(err, row) {
+		if (err) {
+			console.log('dbUpdatePageStatus', err)
+			error = err;
+		} else if (row == undefined) {
+			console.log('dbUpdatePageStatus', 'err: not find pageId', pageId);
+			error = 'err: not find pageId';
+		} else {
+			if (row.isDownload == -1) {
+				// this means , this page is error.
+				isCompleted = true;
+			} else {
+				if ((row.counterContentsImages > -1) && (row.counterVideos > -1)
+					&& (row.counterImages > -1) && (row.counterAttatchments > -1) && (row.counterOtherTypesContents > -1)) {
+					if ((row.counterContentsImages <= row.downloadedContentsImages) &&
+						(row.counterVideos <= row.downloadedVideos) &&
+						(row.counterImages <= row.downloadedImages) &&
+						(row.counterAttatchments <= row.downloadedAttatchments) &&
+						(row.counterOtherTypesContents <= row.downloadedOtherTypesContents)) { 
+
+						db.run("UPDATE " + table + " SET isDownload = 1 WHERE id = ?", row.id);	
+						isCompleted = true;
+					} else {
+					}	
+				} else {
+					// console.log('counterContentsImages', pageId, row.counterContentsImages);
+					// console.log('counterVideos', pageId, row.counterVideos);
+					// console.log('counterImages', pageId, row.counterImages);
+					// console.log('counterAttatchments', pageId, row.counterAttatchments);
+				}
+			}
+			
+		}
+		done(error, isCompleted);		
+		//console.log('dbUpdatePageStatus', pageId);
+	});
+}
+
+function dbCheckReadyAttachment(pageId, done)
 {
 	var table = 'pages';
 	var sql = "SELECT * FROM " + table + " WHERE pageId = ?";
@@ -240,10 +306,10 @@ function dbUpdatePageStatus(pageId, done)
 					if ((row.counterContentsImages <= row.downloadedContentsImages) &&
 						(row.counterVideos <= row.downloadedVideos) &&
 						(row.counterImages <= row.downloadedImages) &&
-						(row.counterOtherTypesContents <= row.downloadedOtherTypesContents) &&
-						(row.counterAttatchments <= row.downloadedAttatchments)) {
+						// (row.counterAttatchments <= row.downloadedAttatchments) &&
+						(row.counterOtherTypesContents <= row.downloadedOtherTypesContents)) { 
 
-						db.run("UPDATE " + table + " SET isDownload = 1 WHERE id = ?", row.id);	
+						//db.run("UPDATE " + table + " SET isDownload = 1 WHERE id = ?", row.id);	
 						isCompleted = true;
 					} else {
 					}	
@@ -258,7 +324,7 @@ function dbUpdatePageStatus(pageId, done)
 		}
 		done(error, isCompleted);
 		
-		console.log('dbUpdatePageStatus', pageId);
+		//console.log('dbUpdatePageStatus', pageId);
 	});
 }
 
@@ -280,7 +346,7 @@ function dbUpdatePageStatusWithError(pageId)
 			db.run("UPDATE " + table + " SET isDownload = -1 WHERE id = ?", row.id);	
 		}
 		
-		console.log('dbUpdatePageStatusWithError', pageId);
+		//console.log('dbUpdatePageStatusWithError', pageId);
 	});
 }
 
@@ -299,7 +365,7 @@ function dbInsertPageContents(url, pageId, data) // edi_ok
 		} else {
 			db.run("UPDATE " + table + " SET jsonData = ? WHERE id = ?", blobData, row.id);
 		}
-		console.log('dbInsertPageContents', pageId);
+		//console.log('dbInsertPageContents', pageId);
 	});
 }
 
@@ -317,7 +383,7 @@ function dbInsertPageOtherTypesContentFiles(url, pageId, s3Key, file_name) // ed
 		} else {
 			db.run("UPDATE " + table + " SET file_name = ? WHERE id = ?", file_name, row.id);
 		}
-		console.log('dbInsertPageOtherTypesContent', pageId);
+		//console.log('dbInsertPageOtherTypesContent', pageId);
 	});
 }
 
@@ -338,7 +404,7 @@ function dbQueryFileInPageOtherTypesContentFiles(url, pageId, s3Key, fn) // edi_
 			file_name = row.file_name;
 			//fn(row.file_name);
 		}
-		console.log('dbQueryFileInPageOtherTypesContent', pageId);
+		//console.log('dbQueryFileInPageOtherTypesContent', pageId);
 		fn(err, file_name);
 	});
 }
@@ -357,7 +423,7 @@ function dbInsertPageContentsFiles(url, pageId, s3Key, file_name) // edi_ok
 		} else {
 			db.run("UPDATE " + table + " SET file_name = ? WHERE id = ?", file_name, row.id);
 		}
-		console.log('dbInsertPageContentsFiles', pageId);
+		//console.log('dbInsertPageContentsFiles', pageId);
 	});
 }
 
@@ -375,7 +441,7 @@ function dbQueryFileInPageContentsFile(url, pageId, s3Key, fn) // edi_ok
 		} else {
 			fn(row.file_name);
 		}
-		console.log('dbQueryFileInPageContentsFile', pageId);
+		//console.log('dbQueryFileInPageContentsFile', pageId);
 	});
 }
 
@@ -394,7 +460,7 @@ function dbInsertPageVideo(url, pageId, s3Key, data='', file_name='') // edi_ok
 		} else {
 			db.run("UPDATE " + table + " SET file_name = ? WHERE id = ?", file_name, row.id);
 		}
-		console.log('dbInsertPageVideo', pageId);
+		//console.log('dbInsertPageVideo', pageId);
 	});
 }
 
@@ -415,7 +481,7 @@ function dbQueryDataInPageVideo(url, postData, fn) // edi_ok
 			data.file_name = row.file_name;
 			fn(data);
 		}
-		console.log('dbQueryDataInPageVideo', postData.itemId);
+		//console.log('dbQueryDataInPageVideo', postData.itemId);
 	});
 }
 
@@ -434,7 +500,7 @@ function dbInsertPageAttatchment(url, pageId, chunkIndex, s3KeyPrefix, data='', 
 		} else {
 			db.run("UPDATE " + table + " SET file_name = ? WHERE id = ?", file_name, row.id);
 		}
-		console.log('dbInsertPageAttatchment', pageId);
+		//console.log('dbInsertPageAttatchment', pageId);
 	});
 }
 
@@ -455,7 +521,7 @@ function dbQueryDataInPageAttatchment(url, postData, fn) // edi_ok
 			data.file_name = row.file_name;
 			fn(data);
 		}
-		console.log('dbQueryDataInPageAttatchment', postData.itemId);
+		//console.log('dbQueryDataInPageAttatchment', postData.itemId);
 	});
 }
 
@@ -474,7 +540,7 @@ function dbInsertPageIamge(url, pageId, s3Key, data='', file_name='') // edi_ok
 		} else {
 			db.run("UPDATE " + table + " SET file_name = ? WHERE id = ?", file_name, row.id);
 		}
-		console.log('dbInsertPageIamge', pageId);
+		//console.log('dbInsertPageIamge', pageId);
 	});
 }
 
@@ -495,7 +561,7 @@ function dbQueryDataInPageIamge(url, postData, fn) // edi_ok
 			data.file_name = row.file_name;
 			fn(data);
 		}
-		console.log('dbQueryDataInPageIamge', postData.itemId);
+		//console.log('dbQueryDataInPageIamge', postData.itemId);
 	});
 }
 
@@ -550,18 +616,17 @@ function dbQueryTeamListSameAjax(ajaxUrl, postData, fn) {
 
 				fn(data);
 			});
-				
-			
 		}
 	});
 	
 }
 
-function dbDeleteLogItem(itemID, fn)
+function dbDeleteLogItem(rowID, fn)
 {
 	//db = remote.getGlobal('sqliteDB');
 
-	db.run('DELETE FROM logs WHERE itemID=?', itemID, function(err) {
+	//db.run('DELETE FROM logs WHERE itemID=?', itemID, function(err) {
+	db.run('DELETE FROM logs WHERE id=?', rowID, function(err) {
 		if (err) {
 			return console.error('dbDeleteLogItem', err.message);
 		}
@@ -612,7 +677,7 @@ function dbGetDownloadsItemsFromLogs(postData, fn)
 		}
 	});
 
-	sql = "SELECT itemName, itemID, position, status, total, downloaded, logTime FROM " + table + " ORDER BY id DESC LIMIT ?, ?";
+	sql = "SELECT id, itemName, itemID, position, status, total, downloaded, logTime FROM " + table + " ORDER BY id DESC LIMIT ?, ?";
 	
 	db.all(sql, [postData.from, postData.size], function(err, rows) {
 		if (err) {
@@ -621,6 +686,7 @@ function dbGetDownloadsItemsFromLogs(postData, fn)
 			rows.forEach(function (row) {  
 				var team = {};
 				team._source = {}
+				team._source.id = row.id;
 				team._source.teamId = row.itemID;
 				team._source.position = row.position;
 				team._source.teamName = row.itemName;

@@ -21,181 +21,43 @@ function loadPage(){
 
 	var selectedTeams = [];
 
-	$('#personalBtn').click(function(e){
-		//window.location.href = '/safe/';
-    window.location.href = makeCallNavigate('/safe/');
-	});
+
 
   $('.btnLog').click(function(e) {
       $(e.target).trigger('blur');
       var isModalVisible = $('#logDownloadItemsModal').is(':visible');
       if (!isModalVisible) {
-          //showDownloadItemsModal(currentSpace);
           showDownloadItemsModal();
       }
 
       return false;
   });
 
-  /***  Creating a team ***/
-
-	function generateTeamKey() {
-		var salt = forge.random.getBytesSync(128);
-		var randomKey = forge.random.getBytesSync(32);
-		var teamKey = forge.pkcs5.pbkdf2(randomKey, salt, 10000, 32);
-		console.log("keyLength: ", teamKey.length);
-		return teamKey;
-	}
-
-	function createANewTeam() {
-    console.log('createATeam');
-
-    var teamKey = generateTeamKey();
-    var teamIV = forge.random.getBytesSync(16);
-    var teamName = $('.nameInput').val();
-    var encodedTeamName = forge.util.encodeUtf8(teamName);
-    var encryptedTeamName = encryptBinaryString(encodedTeamName, teamKey, teamIV);
-
-    var publicKeyFromPem = pki.publicKeyFromPem(publicKeyPem);
-    var encodedTeamKey = forge.util.encodeUtf8(teamKey);
-    var encryptedTeamKey = publicKeyFromPem.encrypt(encodedTeamKey);
-    var encryptedTeamNameByMemberPublic = publicKeyFromPem.encrypt(encodedTeamName);
-
-    var salt = forge.random.getBytesSync(128);
-    var randomKey = forge.random.getBytesSync(32);
-    var searchKey = forge.pkcs5.pbkdf2(randomKey, salt, 10000, 32);
-    var searchKeyIV = forge.random.getBytesSync(16);
-    var searchKeyEnvelope = encryptBinaryString(searchKey, teamKey, searchKeyIV);
-   
-    $('#nameModal').modal('toggle');
-		$('.nameInput').val("");
-		showLoading();
-		var addActionOptions;
-		addActionOptions = {
-      name: encryptedTeamName,
-      IV: teamIV,
-      teamKeyEnvelope: encryptedTeamKey,
-      searchKeyIV: searchKeyIV,
-      searchKeyEnvelope: searchKeyEnvelope,
-      encryptedTeamNameByMemberPublic: encryptedTeamNameByMemberPublic
-    };
-
-		if(addAction !== "addATeamOnTop") {
-			addActionOptions.targetTeam = $addTargetTeam.attr('id');
-			addActionOptions.targetPosition = $addTargetTeam.data('position');
-		} 
-		addActionOptions.addAction = addAction;
-	
-    $.post(server_addr + '/memberAPI/createANewTeam',
-			addActionOptions, 
-     	function(data, textStatus, jQxhr) {
-      if(data.status === 'ok') {
-        var thisTeamKey = teamKey;
-        var team = data.team;
-        var decryptedTeamName = decryptBinaryString(team.name, thisTeamKey, team.IV);
-				hideLoading();
-        listTeams(1);
-      }
-    }, 'json');
-		addAction = "addATeamOnTop";
-	};
-
-	$('#createATeam').click(function(e) {
-		e.preventDefault();
-			createANewTeam();
-		return false;
-	});
-
-	$('.closeTitleModal').click(function(e) {
-		e.preventDefault();
-    addAction = 'addATeamOnTop';
-		return false;
-	});
-
-  $("#btnDownload").click(function(e) {
-    e.preventDefault();
-    downloadSelectedItems(selectedTeams);
-    return false;
+  $("#logDownloadItemsModal").on('hide.bs.modal', function () {
+    $modal_body = $(this).find('.modal-body');
+    ipcRenderer.send( "saveLogModal", $modal_body.html() );
   });
 
+  $('#logDownloadItemsModal').on('show.bs.modal', function() {
+    $modal_body = remote.getGlobal('logModal');
 
-/*** End of creating an team ***/
-
-  var handleAddAction = function(e) {
-    $addTargetTeam = $(e.target).closest('.resultItem');
-
-    if($(e.target).hasClass('addBefore')) {
-      addAction = 'addATeamBefore';
-    } else if($(e.target).hasClass('addAfter')) {
-      addAction = 'addATeamAfter';
+    if ($modal_body != '') {
+      $(this).find('.modal-body').html($modal_body);  
     }
-    console.log(addAction);
-		$('#nameModal').modal('toggle');
-  }
+    
+  });
 
   var handleDeleteAction = function(e) {
     var $targetTeam = $(e.target).closest('.resultItem');
     var itemID = $targetTeam.attr('id');
-    dbDeleteLogItem(itemID, function() {
+    var rowId = $targetTeam.attr('rowId');
+
+    //dbDeleteLogItem(itemID, function() {
+    dbDeleteLogItem(rowId, function() {
       listTeams(1); 
     });
   }
 
-  var handleDropAction = function(e) {
-    var $targetTeam = $(e.target).closest('.resultItem');
-		function showLoadingInTarget() {
-    	$targetTeam.LoadingOverlay("show", {
-      	image       : "",
-      	fontawesome : "fa fa-circle-o-notch fa-spin",
-      	maxSize     : "38px",
-      	minSize      : "36px",
-      	background: "rgba(255, 255, 255, 0.0)"
-    	});
-		}
-		
-		function hideLoadingInTarget() {
-    	$targetTeam.LoadingOverlay("hide");
-  	};
-
-		showLoadingInTarget();
- 
-    var targetTeamId = $targetTeam.attr('id');
-		var targetPosition = $targetTeam.data('position');
-    var dropAction;
-    if($(e.target).hasClass('dropBefore')) {
-      dropAction = 'dropTeamsBefore';
-      selectedTeams.sort(function(a,b){
-        if(a.position < b.position) return -1;
-        if(a.position > b.position) return 1;
-        return 0;
-      });
-    }  else if($(e.target).hasClass('dropAfter')) {
-      dropAction = 'dropTeamsAfter';
-      selectedTeams.sort(function(a,b){
-        if(a.position < b.position) return 1;
-        if(a.position > b.position) return -1;
-        return 0;
-      });
-    }
-    console.log(dropAction);
-    $.post(server_addr + '/memberAPI/dropTeams', {
-			dropAction: dropAction,
-      teams: JSON.stringify(selectedTeams),
-      targetTeam: targetTeamId,
-      targetPosition: targetPosition 
-    }, function(data, textStatus, jQxhr) {
-      if(data.status === 'ok') {
-        selectedTeams.length = 0;
-
-        setTimeout(function() {
-					hideLoadingInTarget();
-         	listTeams(1); 
-        }, 1500);
-      } else {
-				hideLoadingInTarget();
-			}
-    }, 'json');
-  }
 
 	function updateToolbar(selectedTeams) {
     var $checkedItems = $('input:checked');
@@ -218,20 +80,24 @@ function loadPage(){
 	function displayTeams(teams) {
 		function displayATeam() {
 			var team = teams[i];
+      var rowId = team._source.id;
 			var teamId = team._source.teamId;
 			var teamPosition = team._source.position;
       var teamName = team._source.teamName;
       var teamStatus = team._source.status;
+      var logTime = team._source.logTime;
 
 			function appendResult(thisTeamName) {
       	var $resultItem = $('.resultItemTemplate').clone().removeClass('resultItemTemplate hidden').addClass('resultItem');
       	$resultItem.attr('id', teamId);
+        $resultItem.attr('rowId', rowId);
 				$resultItem.data('position', teamPosition);
 				thisTeamName = DOMPurify.sanitize(thisTeamName);
         thisTeamName = '<a hre="">' + thisTeamName + '</a>';
         thisType = checkItemType(teamId);
       	$resultItem.find('.itemTitle').html(thisTeamName);
         $resultItem.find('.itemStatus').html(teamStatus);
+        $resultItem.find('.logTime').html(logTime);
         //$resultItem.find('.itemType').html(thisType);
       	var link = '/team/' + teamId;
 
@@ -357,20 +223,7 @@ function loadPage(){
 		});
 	}
 
-  // bSafesPreflight(function(err, key, thisPublicKey, thisPrivateKey, thisSearchKey) {
-  //     if(err) {
-  //       alert(err);
-  //     } else {
-  //       expandedKey = key;
-		// 		publicKeyPem = thisPublicKey;
-		// 		privateKeyPem = thisPrivateKey;
-		// 		searchKey = thisSearchKey;
 
-		// 		resetPagination();
-
-		// 		listTeams(1);
-  //     }
-  // });
   listTeams(1);
 
   var arrLogItems = [];
@@ -428,7 +281,7 @@ function loadPage(){
           }
           arrLogItems.splice( 0, 1 );   
           //getItemStatus();   
-          setTimeout(getItemStatus, 1000);
+          setTimeout(getItemStatus, 300);
         }
       });
     }

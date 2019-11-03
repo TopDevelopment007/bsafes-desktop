@@ -1018,3 +1018,19 @@ table.mxPopupMenu hr {
 /* End of page *******/
 
 
+.parentNode {
+}
+
+.childNode {
+  color: grey;
+  margin-left: 30px;
+}
+
+.errNode {
+  color: red;
+}
+
+.logTime {
+  color: grey;
+  margin-left: 50px;
+}

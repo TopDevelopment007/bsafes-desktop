@@ -1021,7 +1021,7 @@ function createANewItem(currentContainer, selectedItemType, addAction, $addTarge
 						//window.location.href = link;
             window.location.href = makeCallNavigate(link);
 					}, 1500);	
-/*
+  /*
           if(thisAddAction === "addAnItemOnTop") {
 						setTimeout(listAllItems, 1500);
           } else if(thisAddAction === "addAnItemBefore") {
@@ -1029,7 +1029,7 @@ function createANewItem(currentContainer, selectedItemType, addAction, $addTarge
           } else {
             $addTargetItem.after($resultItem);
           }
-*/
+  */
         }
       }, 'json');
 
@@ -1212,32 +1212,35 @@ function showDownloadItemsModal() {
   {
     //$('.modal-body').empty();
     var logs = require('electron').remote.getGlobal('logMesage');
-    console.log('logs', logs.length);
-    console.log('last_log_index', last_log_index);
+    ipcRenderer.send( "sliceDownloadLogs", logs.length );
     
-    if (last_log_index < logs.length) {
-      new_logs = logs.slice(last_log_index, logs.length);
-      last_log_index = logs.length
-      new_logs.forEach(function(logMsg) {
-        //$skey = $("span").find("[skey='" + logMsg.skey + "']"); 
-        console.log($('.log_txt[skey="' + logMsg.skey + '"]').length);
-        $('.log_txt[skey="' + logMsg.skey + '"]').parent().parent().parent().parent().remove();
-        //if (logMsg.skey == '' || $skey.length == 0)
-        {
-          var $moveItemsPathItem = $('.moveItemsPathRow').clone().removeClass('moveItemsPathRow hidden').addClass('moveItemsPathItem');
-          $moveItemsPathItem.find('.log_time').text(logMsg.logTime);
-          $moveItemsPathItem.find('.log_txt').text(logMsg.message);
-          if (logMsg.skey != '') {
-            $moveItemsPathItem.find('.log_txt').attr("skey", logMsg.skey);  
-          }
+    logs.forEach(function(logMsg) {
+      //$skey = $("span").find("[skey='" + logMsg.skey + "']"); 
+      //console.log($('.log_txt[skey="' + logMsg.skey + '"]').length);
+      $('.log_txt[skey="' + logMsg.skey + '"]').parent().parent().parent().parent().remove();
+      //if (logMsg.skey == '' || $skey.length == 0)
+      {
+        $('.errNode').parent().parent().parent().remove();
+        var $moveItemsPathItem = $('.moveItemsPathRow').clone().removeClass('moveItemsPathRow hidden').addClass('moveItemsPathItem');
+        if (logMsg.node == '0') { // errpr
+          $moveItemsPathItem.find('.item').addClass('errNode');
+        } else if (logMsg.node == '1') {
+          $moveItemsPathItem.find('.item').addClass('parentNode');
+        } else if (logMsg.node == '2') {
+          $moveItemsPathItem.find('.item').addClass('childNode');
+        }
+        $moveItemsPathItem.find('.log_time').text(logMsg.logTime);
+        $moveItemsPathItem.find('.log_txt').text(logMsg.message);
+        if (logMsg.skey != '') {
+          $moveItemsPathItem.find('.log_txt').attr("skey", logMsg.skey);  
+        }
 
-          $('.modal-body').prepend($moveItemsPathItem);
-        } 
-        
-      })  
-    }
+        $('.tmp_body').prepend($moveItemsPathItem);
+      } 
+      
+    })  
 
-    setTimeout(displayLogMessage, 1000);
+    setTimeout(displayLogMessage, 300);
     
   }
   

@@ -6,6 +6,7 @@ var moment = require('moment');
 const fs = require('fs');
 const uuidv1 = require('uuid/v1');
 const { ipcRenderer, remote } = require( "electron" );
+
 var pki = forge.pki;
 var rsa = forge.pki.rsa;
 var privateKeyPem;
@@ -26,33 +27,51 @@ var constContentTypeSpreadsheet = 'contentType#Spreadsheet';
 var constContentTypeDoc = 'contentType#Doc';
 var constContentTypeMxGraph = 'contentType#MxGraph';
 
+// variables for stop/resume
 var isSopped = false;
+var isSkipGetItem = false;
+var isSkipContent = false;
+var isSkipImage = false;
+var isSkipAttach = false;
+// variables for attachments
+var page_content = null;
+var page_item = null;
+var attachments = null;
+var currentContentImage;
+var currentContentVideo;
+var currentImage;
+var currentAttachmentIndex;
+var currentAttachmentChunkIndex;
+var currentAttachmentChunkTotal;
 
-setInterval(interval, 2000);
+
+
+setInterval(interval, 500);
 
 function interval()
 {
-	if (require('electron').remote == undefined) {
+    if (require('electron').remote == undefined) {
         return;
     }
 
-	if (db == null) {
-		db = require('electron').remote.getGlobal('sqliteDB');
-		setSQLiteDB(db);
-		
-	}
-    console.log('_______arrPage', arrPage.length);
-    console.log('____currentPage', currentPage);
-    console.log('____currentPageName', pageName);
-    console.log('____stoppedPage', stoppedPage);
+    if (db == null) {
+        db = require('electron').remote.getGlobal('sqliteDB');
+        setSQLiteDB(db);
+        
+    }
+    
+    // console.log('____ (arrPageCounts)', arrPage.length);
+    // console.log('____ (currentPage)', currentPage);
+    // console.log('____ (currentPageName)', pageName);
+    // console.log('____ (stoppedPage)', stoppedPage);
 
     var isStopped = require('electron').remote.getGlobal('isStopped');
 
     if (isStopped) {
-        console.log('stopped...');
+        console.log('__ (status) stopped...');
         return;
     } else {
-        console.log('running...')
+        console.log('__ (status) running...');
     }
 
     if (stoppedPage) {
@@ -61,12 +80,12 @@ function interval()
         stoppedPage = null;
         downloadPage(currentPage);
 
-    } else if (currentPage == null)
-    {
+    } else if (currentPage == null) {
+
         dbGetDownloadsListFromPages(function(arrPageList){
             arrPage = arrPageList;
             if (arrPageList.length == 0) {
-                saveLog( 'completed' );
+                saveLog( 'completed', '', 1 );
                 return;                
             }
 
@@ -78,6 +97,10 @@ function interval()
                     return;
                 } else {
                     if (currentPage) {
+                        isSkipGetItem = false;
+                        isSkipContent = false;
+                        isSkipImage = false;
+                        isSkipAttach = false;
                         downloadPage(currentPage);    
                     }                    
                 }
@@ -97,44 +120,46 @@ function interval()
 function processErrors(jqXHR)
 {
     var msg;
+
     if(jqXHR == null || jqXHR.status==0) { // internet connection broke  
-        msg = 'internet connection broke';
-        console.log(msg);
+        msg = 'internet connection broken.';        
         stoppedPage = currentPage;
+        saveLog('Ooh, Internet connection has broken.', '', 0);
         ipcRenderer.send( "setDownloadStatus", true );
     } else if(jqXHR.status==500) { // internal server error
         msg = 'internal server error';
     } else {
         msg = 'unknow error';
     }
-
+    console.log(msg);
 }
 
 function downloadPage(pageId) 
 {
-	console.log('start downloading...', pageId);
+    console.log('start downloading page ...', pageId);
     //saveLog(pageId + ' start downloading...', true);
 
     dbQueryInfo(server_addr + '/memberAPI/preflight', {
-		sessionResetRequired: false
-	}, function(data, textStatus, jQxhr ){
-		if(data.status === 'ok'){
-			privateKeyPem = data.privateKey;
-			getPageItem(pageId, data.expandedKey, data.privateKey, data.searchKey, function(err, item) {
+        sessionResetRequired: false
+    }, function(data, textStatus, jQxhr ){
+        if(data.status === 'ok'){
+            privateKeyPem = data.privateKey;
+            getPageItem(pageId, data.expandedKey, data.privateKey, data.searchKey, function(err, item) {
                 if (err) {
                     //alert(err);
-                    console.log('err_downloadPage', pageId);
+                    console.info('!!!_err_getPageItem (pageId = )', pageId);
                     dbUpdatePageStatusWithError(pageId);
                     currentPage = null;
                 } else {
-                    console.info('!!!_complete_downloadPage (pageId = )', pageId);
+                    console.info('!!!_complete_getPageItem (pageId = )', pageId);                    
+
                     function waitForPageSettingTotalCounters(itemId)
                     {
                         dbCheckPageTotalCounters(itemId, function(isReady) {
-                            if (!isReady) {
-                                setTimeout(waitForPageSettingTotalCounters, 500, itemId );
-                            } else {
+                            if (isReady) {
                                 checkIsCompletedThenSet(pageId);
+                            } else {
+                                setTimeout(waitForPageSettingTotalCounters, 200, itemId );
                             }
                         })
                     }
@@ -143,11 +168,10 @@ function downloadPage(pageId)
                 }
                 //currentPage = null;
             });
-		}
-	});
+        }
+    });
 
 }
-
 
 function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey, done, thisVersion) {
     oldVersion = "undefined"
@@ -159,9 +183,9 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
     }
     
     function getPageComments() {
-    	var default_size = 100;
-    	var return_size = 0;
-		var return_data = {};
+        var default_size = 100;
+        var return_size = 0;
+        var return_data = {};
         
         $.post(server_addr + '/memberAPI/getPageComments', {        
             itemId: thisItemId,
@@ -173,19 +197,19 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                 var hits = data.hits.hits;
 
                 if (default_size < total) {
-					$.post(server_addr + '/memberAPI/getPageComments', {
-						itemId: thisItemId,
-						size: total,
-						from: 0
-					}, function(total_data, textStatus, jQxhr) {
-						dbInsertPageContents(server_addr + '/memberAPI/getPageComments', thisItemId, total_data);
-					});
-				} else {
-					dbInsertPageContents(server_addr + '/memberAPI/getPageComments', thisItemId, data);
-				}
-					
+                    $.post(server_addr + '/memberAPI/getPageComments', {
+                        itemId: thisItemId,
+                        size: total,
+                        from: 0
+                    }, function(total_data, textStatus, jQxhr) {
+                        dbInsertPageContents(server_addr + '/memberAPI/getPageComments', thisItemId, total_data);
+                    });
+                } else {
+                    dbInsertPageContents(server_addr + '/memberAPI/getPageComments', thisItemId, data);
+                }
+                    
             } else {
-            	console.log('err_getPageComments', 'none');
+                console.log('err_getPageComments', 'none');
             }
         })
         .fail(function(jqXHR, textStatus, errorThrown){
@@ -200,9 +224,17 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
         options.oldVersion = thisVersion;
     }
 
+    if (isSkipGetItem) {
+        startDownloadResourceFiles(page_content, page_item, function() {
+            done();
+        });
+        return;
+    }
+
     $.post(server_addr + '/memberAPI/getPageItem', options, function(data, textStatus, jQxhr) {
         if (data.status === 'ok') {
-        	dbInsertPageContents(server_addr + '/memberAPI/getPageItem', thisItemId, data);
+            console.log('== (downloaded page item)');
+            dbInsertPageContents(server_addr + '/memberAPI/getPageItem', thisItemId, data);
 
             if (data.item) {
                 itemCopy = data.item;
@@ -216,8 +248,8 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
 
                 dbInsertDownloadList(itemContainer);
 
-                function decryptItem(envelopeKey) {
-                    console.log('decryptItem', thisItemId);
+                function decryptItem(envelopeKey, fn) {
+                    //console.log('decryptItem', thisItemId);
                     itemKey = decryptBinaryString(item.keyEnvelope, envelopeKey, item.envelopeIV);
                     itemIV = decryptBinaryString(item.ivEnvelope, envelopeKey, item.ivEnvelopeIV);
                     itemTags = [];
@@ -250,7 +282,7 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                     } else {
                         pageContentType = constContentTypeWrite;
                     }
-                    
+
                     $('.container').data('itemId', itemId);
                     $('.container').data('itemKey', itemKey);
                     $('.container').data('itemIV', itemIV);
@@ -270,9 +302,9 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                     }
                     pageName = titleText;
 
-                    saveLog('< ' + pageName + '> started.');
+                    saveLog('< ' + pageName + '> started.', '', 1);
                     //if (current_down_item) logObj.push(current_down_item);
-                    current_down_item = {'itemId' : thisItemId, 'itemName' : pageName, logs : [] };
+                    current_down_item = { 'itemId': thisItemId, 'itemName': pageName, logs: [] };
                     current_down_item.logs.push();
                     //getAndShowPath(thisItemId, envelopeKey, teamName, titleText);
                     getAndShowPath(thisItemId, envelopeKey, titleText);
@@ -284,7 +316,7 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                             content = forge.util.decodeUtf8(encodedContent);
                             DOMPurify.addHook('afterSanitizeAttributes', function(node) {
                                 // set all elements owning target to target=_blank
-                                if ('target'in node) {
+                                if ('target' in node) {
                                     node.setAttribute('target', '_blank');
                                 }
                                 // set non-HTML/MathML links to xlink:show=new
@@ -295,7 +327,7 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                             content = DOMPurify.sanitize(content);
                             item_content = content;
                             //$('.froala-editor#content').html(content);
-                            if ( content && (pageContentType == null) ) { // old case...
+                            if (content && (pageContentType == null)) { // old case...
                                 pageContentType = constContentTypeWrite;
                             }
                         } catch (err) {
@@ -307,170 +339,70 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                         dbSetTotalCountersOfPage(itemId, 'ContentsImage', 0);
                         dbSetTotalCountersOfPage(itemId, 'Video', 0);
                     }
-                    
+
+                    // initContentView(content);
+
 
                     if (item.images && item.images.length) {
                         dbSetTotalCountersOfPage(itemId, 'Image', item.images.length);
+
+                        function buildDownloadImagesList() {
+                            var images = item.images;
+                            var $lastElement = $('.imageBtnRow');
+                            for (var i = 0; i < images.length; i++) {
+                                $downloadImage = $('.downloadImageTemplate').clone().removeClass('downloadImageTemplate hidden').addClass('downloadImage');
+                                var id = 'index-' + i;
+                                $downloadImage.attr('id', id);
+                                var s3Key = images[i].s3Key;
+                                var words = images[i].words;
+                                $downloadImage.data('s3Key', s3Key);
+                                $downloadImage.data('words', words);
+                                $downloadImage.find('.downloadText').text("");
+                                $lastElement.after($downloadImage);
+                                $lastElement = $downloadImage;
+                            }
+                        }
+
+                        buildDownloadImagesList();
                     } else {
                         dbSetTotalCountersOfPage(itemId, 'Image', 0);
                     }
 
-                    if (item.images && item.images.length) {
-                        function downloadAndDisplayImages() {
-                            //$('.imageBtnRow').addClass('hidden');
 
-                            function buildDownloadImagesList() {
-                                var images = item.images;
-                                var $lastElement = $('.imageBtnRow');
-                                for (var i = 0; i < images.length; i++) {
-                                    $downloadImage = $('.downloadImageTemplate').clone().removeClass('downloadImageTemplate hidden').addClass('downloadImage');
-                                    var id = 'index-' + i;
-                                    $downloadImage.attr('id', id);
-                                    var s3Key = images[i].s3Key;
-                                    var words = images[i].words;
-                                    $downloadImage.data('s3Key', s3Key);
-                                    $downloadImage.data('words', words);
-                                    $downloadImage.find('.downloadText').text("");
-                                    $lastElement.after($downloadImage);
-                                    $lastElement = $downloadImage;
-                                }
-                            }
-                            
-                            function startDownloadingImages(done) {
-                                var $downloadImagesList = $('.downloadImage');
-                                var index = 0;
+                    attachments = item.attachments;                    
 
-                                function downloadAnImage(done) {
-                                    $downloadImage = $($downloadImagesList[index]);
-                                    $downloadImage.find('.downloadText').text("Downloading");
-                                    var id = $downloadImage.attr('id');
-                                    // var s3CommonKey = $downloadImage.data('s3Key');
-                                    // var s3Key = s3CommonKey + "_gallery";
-                                    var images = item.images;
-                                    var s3CommonKey = images[index].s3Key;
-                                    var s3Key = s3CommonKey + "_gallery";
+                    dbSetTotalCountersOfPage(itemId, 'Attatchment', attachments.length - 1);
+                    console.log(' == Attachment counts : ' + (attachments.length - 1));
+                    
+                    page_content = content;
+                    page_item = item;
+                    isSkipGetItem = true;
 
-                                    $.post(server_addr + '/memberAPI/preS3Download', {
-                                        itemId: itemId,
-                                        s3Key: s3Key
-                                    }, function(data, textStatus, jQxhr) {
-                                        if (data.status === 'ok') {
-                                        	dbInsertPageIamge(server_addr + '/memberAPI/preS3Download', itemId, s3Key, data);
-                                            var signedURL = data.signedURL;
+                    currentContentImage = 0;
+                    currentContentVideo = 0;
+                    currentImage = 0;
+                    currentAttachmentIndex = 1;
+                    currentAttachmentChunkIndex = 0;
 
-                                            var xhr = new XMLHttpRequest();
-                                            xhr.open('GET', signedURL, true);
-                                            xhr.responseType = 'arraybuffer';
+                    startDownloadResourceFiles(page_content, page_item, function() {
+                        fn();
+                    });
+                    
 
-                                            xhr.addEventListener("progress", function(evt) {
-                                                if (evt.lengthComputable) {
-                                                    var percentComplete = evt.loaded / evt.total * 100;
-                                                    $downloadImage.find('.progress-bar').css('width', percentComplete + '%');
-                                                    saveLog('Image downloading : ' + percentComplete + '%', s3Key);
-                                                    console.log('****edi_image download' + s3Key + ':' + percentComplete);
-                                                }
-                                            }, false);
+                    // for (var i = 1; i < attachments.length; i++) {
+                    //     var attachment = attachments[i];
+                    //     var encodedFileName = decryptBinaryString(attachment.fileName, itemKey, itemIV);
+                    //     var fileName = forge.util.decodeUtf8(encodedFileName);
 
-                                            xhr.onload = function(e) {
-                                                $downloadImage.find('.downloadText').text("Decrypting");
-                                                //currentImageDownloadXhr = null;
-                                                var encryptedImageDataInArrayBuffer = this.response;
-                                                var buffer = this.response;
-                                                var file_name = uuidv1();
-												fs.open(download_folder_path + file_name, 'w', function(err, fd) {
-												    if (err) {
-												        throw 'could not open file: ' + err;
-												    }
-												    // write the contents of the buffer, from position 0 to the end, to the file descriptor returned in opening our file
-												    fs.write(fd, new Buffer(buffer), 0, buffer.length, null, (err) => {
-												        if (err) throw 'error writing file: ' + err;
-												        dbInsertPageIamge(server_addr + '/memberAPI/preS3Download', itemId, s3Key, data='', file_name);
-                                                        updatePageStatus(itemId, 'Image');
-												        fs.close(fd, function() {
-												            console.log('wrote the Image file successfully');
-												        });
-												    });
-												});
+                    //     downloadAttachment(attachment.s3KeyPrefix, i);
+                    // }
 
-                                                done(null);
-
-                                            }
-
-                                            xhr.onerror = function (e) {
-                                                dbUpdatePageStatusWithError(itemId);
-                                                //alert('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
-                                                console.log('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
-                                                saveLog('Ooh, Error occured');
-                                                processErrors(null);
-                                            };
-                                            
-                                            xhr.send();
-
-                                        }
-                                    }, 'json');
-
-                                }
-                                
-                                var doneDownloadingAnImage = function(err) {
-                                    if (err) {
-                                        console.log(err);
-                                        done(err);
-                                    } else {
-                                        index++;
-                                        //if (index < $downloadImagesList.length) {
-                                        if (index < item.images.length) {
-                                            downloadAnImage(doneDownloadingAnImage);
-                                        } else {
-                                            done(null);
-                                        }
-                                    }
-                                };
-
-                                downloadAnImage(doneDownloadingAnImage);
-                            }
-                            
-                            buildDownloadImagesList();
-                            startDownloadingImages(function(err) {
-                                if (err) {
-                                    console.log(err);
-                                } else {
-                                    //$('.imageBtnRow').removeClass('hidden');
-                                }
-                            });
-
-                        }                        
-                        downloadAndDisplayImages();
-                    }
-
-                    var attachments = item.attachments;
-                    dbSetTotalCountersOfPage(itemId, 'Attatchment', attachments.length-1);
-                    for (var i = 1; i < attachments.length; i++) {
-                        var attachment = attachments[i];
-                        var encodedFileName = decryptBinaryString(attachment.fileName, itemKey, itemIV);
-                        var fileName = forge.util.decodeUtf8(encodedFileName);
-                        //var $attachment = showAttachment(fileName, attachment.size);
-                        //$attachment.attr('id', attachment.s3KeyPrefix);
-                        //changeDownloadingState($attachment, 'Attached');
-                        //var $download = $attachment.find('.downloadBtn');
-                        //$download.off();
-                        //$download.click(queueDownloadEvent);
-                        downloadAttachment(attachment.s3KeyPrefix);
-                    }
-                    if (!thisVersion || thisVersion === currentVersion) {
-                        //enableEditControls();
-                        /* initializeEditorButtons();
-						initializeImageButton();
-          				initializeAttachButton();
-						*/
-                    } else {
-                        //disableEditControls();
-                    }
-                    initContentView(content);
+                    
                 } // end function decryptItem()
 
                 if (itemSpace.substring(0, 1) === 'u') {
                     $('.navbarTeamName').text("Yours");
-                    decryptItem(expandedKey);
+                    decryptItem(expandedKey, done);
                     getPageComments();
                     done(null, item);
                 } else {
@@ -504,14 +436,14 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                             teamSearchKey = decryptBinaryString(teamSearchKeyEnvelope, teamKey, teamSearchKeyIV);
                             //setIsATeamItem(teamKey, teamSearchKey);
 
-                            decryptItem(teamKey);
+                            decryptItem(teamKey, done);
                             getPageComments();
                             done(null, item);
                         }
                     });
                 }
             } else {
-                
+
                 if ((itemId.substring(0, 2) === 'np') || (itemId.substring(0, 2) === 'dp')) {
                     itemIdParts = itemId.split(':');
 
@@ -540,7 +472,7 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                             teamId = itemSpaceParts.join(':');
                             getTeamData(teamId, function(err, team) {
                                 if (err) {
-                                    done(err);
+                                    done(err, thisItemId);
                                 } else {
                                     var teamKeyEnvelope = team.teamKeyEnvelope;
                                     teamKey = pkiDecrypt(teamKeyEnvelope);
@@ -555,13 +487,13 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                                     $('.pathSpace').find('a').html(teamName);
                                     //showPath(teamName, itemPath, itemContainer, teamKey, itemId);
 
-                                    setupNewItemKey();
+                                    //setupNewItemKey();
                                     console.log('err1');
                                     done(null, null);
                                 }
                             });
                         } else {
-                            setupNewItemKey();
+                            //setupNewItemKey();
                             //showPath('Personal', itemPath, itemContainer, expandedKey, itemId);
                             console.log('err2');
                             done(null, null);
@@ -573,35 +505,36 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                 }
             }
         } else {
-            console.log('err4_getPageItem', data.error, thisItemId);
+            console.log('** (err_getPageItem_data.status)', data.error, thisItemId);
             done(data.error, null)
         }
         
     }, 'json')
     .fail(function(jqXHR, textStatus, errorThrown){
+        console.log('** (err_getPageItem_post)', thisItemId);
         processErrors(jqXHR);
     });
 }
 
 
 function getTeamData(teamId, done) {
-	$.post(server_addr + '/memberAPI/getTeamData', {
-		teamId: teamId
-	}, function(data, textStatus, jQxhr) {
-		if(data.status === 'ok') {
+    $.post(server_addr + '/memberAPI/getTeamData', {
+        teamId: teamId
+    }, function(data, textStatus, jQxhr) {
+        if(data.status === 'ok') {
             dbInsertTeams(server_addr + '/memberAPI/getTeamData', teamId, data);
             dbInsertDownloadList(teamId);
-			done(null, data.team);      		
-		} else {
+            done(null, data.team);              
+        } else {
             console.log('err4_getTeamData');
-			done(data.error, null);
-      		console.log('err:(getTeamData)', data.error);
-		}
-	}, 'json')
+            done(data.error, null);
+              console.log('err:(getTeamData)', data.error);
+        }
+    }, 'json')
     .fail(function(jqXHR, textStatus, errorThrown){
         processErrors(jqXHR);
     });
-};	
+};    
 
 var pkiDecrypt = function(encryptedData) {
     var privateKeyFromPem = pki.privateKeyFromPem(privateKeyPem);
@@ -611,17 +544,17 @@ var pkiDecrypt = function(encryptedData) {
 }
 
 function getPath(itemId, pageId, done) {
-	$.post(server_addr + '/memberAPI/getItemPath', {
-		itemId: itemId
-	}, function(data, textStatus, jQxhr) {
-		if(data.status === 'ok') {
-			var path = data.itemPath;
-			dbInsertItemPath(server_addr + '/memberAPI/getItemPath', itemId, data);
-			done(path);
-		} else {
+    $.post(server_addr + '/memberAPI/getItemPath', {
+        itemId: itemId
+    }, function(data, textStatus, jQxhr) {
+        if(data.status === 'ok') {
+            var path = data.itemPath;
+            dbInsertItemPath(server_addr + '/memberAPI/getItemPath', itemId, data);
+            done(path);
+        } else {
             console.log('err5');
         }
-	})
+    })
     .fail(function(jqXHR, textStatus, errorThrown){
         processErrors(jqXHR);
     });
@@ -629,230 +562,12 @@ function getPath(itemId, pageId, done) {
 
 //function getAndShowPath(itemId, envelopeKey, teamName, endItemTitle) {
 function getAndShowPath(itemId, envelopeKey, endItemTitle) {
-	$.post(server_addr + '/memberAPI/getItemPath', {
-		itemId: itemId 
-	}, function(data, textStatus, jQxhr) {
-		if(data.status === 'ok') {
-			dbInsertItemPath(server_addr + '/memberAPI/getItemPath', itemId, data);
-			//showPath(teamName, data.itemPath, itemId, envelopeKey, null ,endItemTitle);
-		} else {
-            console.log('err6');
-        }
-	}, 'json')
-    .fail(function(jqXHR, textStatus, errorThrown){
-        processErrors(jqXHR);
-    });
-}
-
-function downloadContentImageObjects(item_content, itemId) {
-    downloadNextContentImageObject(item_content, itemId);
-}
-;
-function downloadNextContentImageObject(item_content, itemId) {
-
-    var encryptedImages = $(item_content).find(".bSafesImage");
-
-    dbSetTotalCountersOfPage(itemId, 'ContentsImage', encryptedImages.length);
-    for (var i = 0; i < encryptedImages.length; i++) {
-        downloadImageObject($(encryptedImages[i]), itemId);
-    }
-
-}
-;
-function downloadImageObject(encryptedImageElement, itemId) {
-    currentDownloadingImageElement = encryptedImageElement;
-    currentDownloadingImageElement.addClass('bSafesDownloading');
-
-    var id = currentDownloadingImageElement.attr('id');
-
-    var s3CommonKey = id.split('&')[0];
-    var s3Key = s3CommonKey + '_gallery';
-
-    function displayImage(link) {
-        var targetElement = $(document.getElementById(id));
-
-        targetElement.on('load', function() {
-            targetElement.addClass('bSafesDisplayed');
-            var parent = targetElement.parent();
-            if (parent.hasClass('downloadingImageContainer'))
-                parent.replaceWith(targetElement);
-        });
-        targetElement.attr('src', link);
-    }
-
-    $.post(server_addr + '/memberAPI/preS3Download', {
-        itemId: itemId,
-        s3Key: s3Key
+    $.post(server_addr + '/memberAPI/getItemPath', {
+        itemId: itemId 
     }, function(data, textStatus, jQxhr) {
-        if (data.status === 'ok') {
-            var signedURL = data.signedURL;
-            var isDownloaded = false;
-
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', signedURL, true);
-            xhr.responseType = 'arraybuffer';
-
-            xhr.addEventListener("progress", function(evt) {
-                if (evt.lengthComputable) {
-                    var percentComplete = evt.loaded / evt.total * 100;
-
-                    $(document.getElementById('progressBar' + id)).width(percentComplete + '%');
-                }
-            }, false);
-
-            xhr.onload = function(e) {
-				var buffer = this.response;
-				var file_name = uuidv1();
-                isDownloaded = true;
-
-				fs.open(download_folder_path + file_name, 'w', function(err, fd) {
-				    if (err) {
-				        throw 'could not open file: ' + err;
-				    }
-				    // write the contents of the buffer, from position 0 to the end, to the file descriptor returned in opening our file
-				    fs.write(fd, new Buffer(buffer), 0, buffer.length, null, (err) => {
-				        if (err) throw 'error writing file: ' + err;
-				        dbInsertPageContentsFiles(server_addr + '/memberAPI/preS3Download', itemId, s3Key, file_name);
-                        updatePageStatus(itemId, 'ContentsImage');
-				        fs.close(fd, function() {
-				            console.log('wrote the ContentsImage file successfully');
-				        });
-				    });
-				});
-
-                var encryptedImageDataInArrayBuffer = this.response;
-               	
-
-                $(document.getElementById('progressBar' + id)).parent().remove();
-                $.post(server_addr + '/memberAPI/postS3Download', {
-                    itemId: itemId,
-                    s3Key: s3CommonKey
-                }, function(data, textStatus, jQxhr) {
-                    if (data.status === 'ok') {
-                        var item = data.item;
-                        var size = item.size;
-
-                        var decryptedImageDataInUint8Array = decryptArrayBuffer(encryptedImageDataInArrayBuffer, itemKey, itemIV);
-                        var link = window.URL.createObjectURL(new Blob([decryptedImageDataInUint8Array]), {
-                            type: 'image/jpeg'
-                        });
-                        $downloadedElement = $(document.getElementById(id));
-                        $downloadedElement.removeClass('bSafesDownloading');
-                        displayImage(link);
-                    } else {
-                        console.log('err6');
-                    }
-                }, 'json')
-                .fail(function(jqXHR, textStatus, errorThrown){
-                    processErrors(jqXHR);
-                });;
-            }
-            ;
-            xhr.onerror = function (e) {
-                dbUpdatePageStatusWithError(itemId);
-                //alert('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
-                console.log('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
-                saveLog('Ooh, Error occured');
-                if (isDownloaded) processErrors(null);
-            };
-
-            xhr.send();
-
-        }
-    }, 'json')
-    .fail(function(jqXHR, textStatus, errorThrown){
-        processErrors(jqXHR);
-    });
-}
-
-function downloadVideoObject($videoDownload) {
-    $videoDownload.off('click');
-    $videoDownload.addClass('bSafesDownloading');
-    var id = $videoDownload.attr('id');
-    var s3Key = $videoDownload.attr('id').split('&')[0];
-
-    // if (!currentEditor) {
-    //     attachProgressBar($videoDownload);
-    // }
-
-    $.post(server_addr + '/memberAPI/preS3Download', {
-        itemId: itemId,
-        s3Key: s3Key
-    }, function(data, textStatus, jQxhr) {
-        if (data.status === 'ok') {
-            dbInsertPageVideo(server_addr + '/memberAPI/preS3Download', itemId, s3Key, data);
-            var signedURL = data.signedURL;
-
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', signedURL, true);
-            xhr.responseType = 'arraybuffer';
-
-            xhr.addEventListener("progress", function(evt) {
-                if (evt.lengthComputable) {
-                    var percentComplete = evt.loaded / evt.total * 100;
-
-                    console.log('downloadVideoObject', percentComplete);
-                    $(document.getElementById('progressBar' + id)).width(percentComplete + '%');
-                }
-            }, false);
-
-            xhr.onload = function(e) {
-                var buffer = this.response;
-                var file_name = uuidv1();
-                fs.open(download_folder_path + file_name, 'w', function(err, fd) {
-                    if (err) {
-                        throw 'could not open file: ' + err;
-                    }
-                    // write the contents of the buffer, from position 0 to the end, to the file descriptor returned in opening our file
-                    fs.write(fd, new Buffer(buffer), 0, buffer.length, null, (err) => {
-                        if (err) throw 'error writing file: ' + err;
-                        //dbInsertPageAttatchment(server_addr + '/memberAPI/preS3ChunkDownload', itemId, current_chunkIndex, id, data='', file_name);
-                        dbInsertPageVideo(server_addr + '/memberAPI/preS3Download', itemId, s3Key, data='', file_name);
-                        updatePageStatus(itemId, 'Video');
-                        fs.close(fd, function() {
-                            console.log('wrote the Video file successfully');
-                        });
-                    });
-                });
-
-                // $(document.getElementById('progressBar' + id)).parent().remove();
-                // var encryptedVideoDataInArrayBuffer = this.response;
-
-                // decryptArrayBufferAsync(encryptedVideoDataInArrayBuffer, itemKey, itemIV, function(data) {
-                //     videoBlob = new Blob([data],{
-                //         type: "video/mp4"
-                //     });
-                //     videoLink = window.URL.createObjectURL(videoBlob);
-
-                //     var $videoSpan = $('<span class="fr-video fr-draggable" contenteditable="false" draggable="true"><video class="bSafesVideo fr-draggable fr-dvi fr-fvc" controls="">Your browser does not support HTML5 video.</video></span>');
-                //     var $video = $videoSpan.find('video');
-                //     $video.attr('id', id);
-                //     $video.attr('src', videoLink);
-                //     var style = $videoDownload.attr('style');
-                //     $video.attr('style', style);
-
-                //     if ($videoDownload.hasClass('fr-dib'))
-                //         $videoSpan.addClass('fr-dvb');
-                //     if ($videoDownload.hasClass('fr-dii'))
-                //         $videoSpan.addClass('fr-dvi');
-                //     if ($videoDownload.hasClass('fr-fil'))
-                //         $videoSpan.addClass('fr-fvl');
-                //     if ($videoDownload.hasClass('fr-fic'))
-                //         $videoSpan.addClass('fr-fvc');
-                //     if ($videoDownload.hasClass('fr-fir'))
-                //         $videoSpan.addClass('fr-fvr');
-
-                //     var $targetElement = $(document.getElementById(id));
-                //     // jQuery doesn't accept slashes in selector
-                //     var $parent = $targetElement.parent();
-                //     $parent.replaceWith($videoSpan);
-
-                // });
-            }
-            ;
-
-            xhr.send();
-
+        if(data.status === 'ok') {
+            dbInsertItemPath(server_addr + '/memberAPI/getItemPath', itemId, data);
+            //showPath(teamName, data.itemPath, itemId, envelopeKey, null ,endItemTitle);
         } else {
             console.log('err6');
         }
@@ -861,46 +576,378 @@ function downloadVideoObject($videoDownload) {
         processErrors(jqXHR);
     });
 }
-;
-function handleVideoObjects(item_content, itemId) {
-
-    var videoDownloads = $(item_content).find(".bSafesDownloadVideo");
-
-    dbSetTotalCountersOfPage(itemId, 'Video', videoDownloads.length);
-    for (var i = 0; i < videoDownloads.length; i++) {
-        downloadVideoObject($(videoDownloads[i]));
-    }
-}
 
 function isImageDisplayed(imageElement) {
     var src = imageElement.attr('src');
     return src.indexOf('blob:') === 0;
 }
 
-var downloadAttachment = function(id) {
-    //e.preventDefault();
-    //var $downloadAttachment = $(e.target).parent();
-    //var $attachment = $downloadAttachment.closest('.attachment');
-    //var id = $attachment.attr('id');
+// for page resource!!!!
+
+function downloadContentImageObjects(item_content, itemId, done) {
+
+    var encryptedImages = $(item_content).find(".bSafesImage");
+
+    dbSetTotalCountersOfPage(itemId, 'ContentsImage', encryptedImages.length);
+    console.log('== (contents_image counts = )', encryptedImages.length);
+
+    if (encryptedImages.length) {
+        saveLog('   Content Image counts : ' + encryptedImages.length);
+
+        downloadImageObject(item_content, itemId, currentContentImage, function () {
+            done();
+        });
+
+    } else {
+        done();
+    }
+}
+
+function downloadImageObject(item_content, itemId, index, done) {
+
+    var encryptedImages = $(item_content).find(".bSafesImage");
+    
+    if (index < encryptedImages.length) {
+
+        var encryptedImageElement = $(encryptedImages[index]);
+
+        currentDownloadingImageElement = encryptedImageElement;
+        currentDownloadingImageElement.addClass('bSafesDownloading');
+
+        var id = currentDownloadingImageElement.attr('id');
+
+        var s3CommonKey = id.split('&')[0];
+        var s3Key = s3CommonKey + '_gallery';
+
+        $.post(server_addr + '/memberAPI/preS3Download', {
+            itemId: itemId,
+            s3Key: s3Key
+        }, function(data, textStatus, jQxhr) {
+            if (data.status === 'ok') {
+                var signedURL = data.signedURL;
+                var isDownloaded = false;
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', signedURL, true);
+                xhr.responseType = 'arraybuffer';
+
+                xhr.addEventListener("progress", function(evt) {
+                    if (evt.lengthComputable) {
+                        var percentComplete = evt.loaded / evt.total * 100;
+                        $(document.getElementById('progressBar' + id)).width(percentComplete + '%');
+                        console.log('== (contents_image)', index + 1, s3Key, percentComplete);
+                    }
+                }, false);
+
+                xhr.onload = function(e) {
+                    var buffer = this.response;
+                    var file_name = uuidv1();
+                    isDownloaded = true;
+
+                    fs.open(download_folder_path + file_name, 'w', function(err, fd) {
+                        if (err) {
+                            throw 'could not open file: ' + err;
+                        }
+                        // write the contents of the buffer, from position 0 to the end, to the file descriptor returned in opening our file
+                        fs.write(fd, new Buffer(buffer), 0, buffer.length, null, (err) => {
+                            if (err) throw 'error writing file: ' + err;
+                            dbInsertPageContentsFiles(server_addr + '/memberAPI/preS3Download', itemId, s3Key, file_name);
+                            updatePageStatus(itemId, 'ContentsImage');
+                            fs.close(fd, function() {
+                                //console.log('wrote the ContentsImage file successfully');
+                                saveLog('  Content Image ' + (index + 1).toString() + ' downloaded');
+                                index = index + 1;
+                                currentContentImage = index;
+                                downloadImageObject(item_content, itemId, index, done)
+
+                            });
+                        });
+                    });
+
+                   
+                }
+                ;
+                xhr.onerror = function (e) {
+                    dbUpdatePageStatusWithError(itemId);
+                    //alert('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
+                    //console.log('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
+                    console.log('** (err_preS3Download_contentsimg)', signedURL);
+                    saveLog('  Ooh, Errors occured');
+                    if (isDownloaded) processErrors(null);
+                };
+
+                xhr.send();
+
+            }
+        }, 'json')
+        .fail(function(jqXHR, textStatus, errorThrown){
+            console.log('** (err_preS3Download_contentsimg_ajax)', signedURL);
+            processErrors(jqXHR);
+        });
+        
+    } else {
+        done();
+    }   
+}
+
+function downloadVideoObject(item_content, itemId, index, done) {
+
+    var videoDownloads = $(item_content).find(".bSafesDownloadVideo");
+
+    if (index < videoDownloads.length) {
+
+        $videoDownload = $(videoDownloads[index]);
+
+        $videoDownload.off('click');
+        $videoDownload.addClass('bSafesDownloading');
+        var id = $videoDownload.attr('id');
+        var s3Key = $videoDownload.attr('id').split('&')[0];
+
+        $.post(server_addr + '/memberAPI/preS3Download', {
+            itemId: itemId,
+            s3Key: s3Key
+        }, function(data, textStatus, jQxhr) {
+            if (data.status === 'ok') {
+                dbInsertPageVideo(server_addr + '/memberAPI/preS3Download', itemId, s3Key, data);
+                var signedURL = data.signedURL;
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', signedURL, true);
+                xhr.responseType = 'arraybuffer';
+
+                xhr.addEventListener("progress", function(evt) {
+                    if (evt.lengthComputable) {
+                        var percentComplete = evt.loaded / evt.total * 100;
+
+                        console.log('== (video)', index + 1, s3Key, percentComplete);
+                        saveLog('  Video ' + (index + 1).toString() + ' downloading : ' + percentComplete + '%', s3Key);
+                        $(document.getElementById('progressBar' + id)).width(percentComplete + '%');
+                    }
+                }, false);
+
+                xhr.onload = function(e) {
+                    var buffer = this.response;
+                    var file_name = uuidv1();
+                    fs.open(download_folder_path + file_name, 'w', function(err, fd) {
+                        if (err) {
+                            throw 'could not open file: ' + err;
+                        }
+                        // write the contents of the buffer, from position 0 to the end, to the file descriptor returned in opening our file
+                        fs.write(fd, new Buffer(buffer), 0, buffer.length, null, (err) => {
+                            if (err) throw 'error writing file: ' + err;
+                            //dbInsertPageAttatchment(server_addr + '/memberAPI/preS3ChunkDownload', itemId, current_chunkIndex, id, data='', file_name);
+                            dbInsertPageVideo(server_addr + '/memberAPI/preS3Download', itemId, s3Key, data='', file_name);
+                            updatePageStatus(itemId, 'Video');
+                            fs.close(fd, function() {
+                                saveLog('  Content Video ' + (index + 1).toString() + ' downloaded');
+                                index = index + 1;
+                                currentContentVideo = index;
+                                console.log('wrote the Video file successfully');
+                            });
+                        });
+                    });
+                }
+                ;
+
+                xhr.onerror = function (e) {
+                    dbUpdatePageStatusWithError(itemId);
+                    //alert('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
+                    //console.log('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
+                    console.log('** (err_preS3Download_video)', signedURL);
+                    saveLog('  Ooh, Errors occured');
+                    if (isDownloaded) processErrors(null);
+                };
+
+                xhr.send();
+
+            } else {
+                console.log('err6');
+            }
+        }, 'json')
+        .fail(function(jqXHR, textStatus, errorThrown){
+            console.log('** (err_preS3Download_video_ajax)');
+            processErrors(jqXHR);
+        });
+    }
+}
+;
+function handleVideoObjects(item_content, itemId, done) {
+
+    var videoDownloads = $(item_content).find(".bSafesDownloadVideo");
+
+    dbSetTotalCountersOfPage(itemId, 'Video', videoDownloads.length);
+    
+
+    if (videoDownloads.length) {
+        console.log('== (video counts = )', videoDownloads.length);
+        saveLog('   Video counts : ' + videoDownloads.length);
+
+        downloadVideoObject(item_content, itemId, currentContentVideo, function() {
+            done();
+        })
+    } else {
+        console.log('== (video counts = )', 0);
+        done();
+    }
+
+}
+
+function startDownloadingImages(item, done) {
+    var $downloadImagesList = $('.downloadImage');
+    var index = currentImage;
+
+    function downloadAnImage(done) {
+        $downloadImage = $($downloadImagesList[index]);
+        $downloadImage.find('.downloadText').text("Downloading");
+        var id = $downloadImage.attr('id');
+        // var s3CommonKey = $downloadImage.data('s3Key');
+        // var s3Key = s3CommonKey + "_gallery";
+        var images = item.images;
+        var s3CommonKey = images[index].s3Key;
+        var s3Key = s3CommonKey + "_gallery";
+
+        $.post(server_addr + '/memberAPI/preS3Download', {
+            itemId: itemId,
+            s3Key: s3Key
+        }, function(data, textStatus, jQxhr) {
+            if (data.status === 'ok') {
+                dbInsertPageIamge(server_addr + '/memberAPI/preS3Download', itemId, s3Key, data);
+                var signedURL = data.signedURL;
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', signedURL, true);
+                xhr.responseType = 'arraybuffer';
+
+                xhr.addEventListener("progress", function(evt) {
+                    if (evt.lengthComputable) {
+                        var percentComplete = evt.loaded / evt.total * 100;
+                        $downloadImage.find('.progress-bar').css('width', percentComplete + '%');
+                        saveLog('  Image ' + (index + 1).toString() + ' downloading : ' + percentComplete + '%', s3Key);
+                        console.log('== (image)', index + 1, s3Key, percentComplete);
+                        //console.log('****edi_image download' + s3Key + ':' + percentComplete);
+                    }
+                }, false);
+
+                xhr.onload = function(e) {
+                    $downloadImage.find('.downloadText').text("Decrypting");
+                    //currentImageDownloadXhr = null;
+                    var encryptedImageDataInArrayBuffer = this.response;
+                    var buffer = this.response;
+                    var file_name = uuidv1();
+                    fs.open(download_folder_path + file_name, 'w', function(err, fd) {
+                        if (err) {
+                            throw 'could not open file: ' + err;
+                        }
+                        // write the contents of the buffer, from position 0 to the end, to the file descriptor returned in opening our file
+                        fs.write(fd, new Buffer(buffer), 0, buffer.length, null, (err) => {
+                            if (err) throw 'error writing file: ' + err;
+                            dbInsertPageIamge(server_addr + '/memberAPI/preS3Download', itemId, s3Key, data = '', file_name);
+                            updatePageStatus(itemId, 'Image');
+                            fs.close(fd, function() {
+                                //console.log('wrote the Image file successfully');
+                            });
+                        });
+                    });
+
+                    done(null);
+
+                }
+
+                xhr.onerror = function(e) {
+                    dbUpdatePageStatusWithError(itemId);
+                    console.log('** (err_preS3Download)', signedURL);
+                    saveLog('  Ooh, Errors occured');
+                    processErrors(null);
+                };
+
+                xhr.send();
+
+            }
+        }, 'json');
+
+    }
+
+    var doneDownloadingAnImage = function(err) {
+        if (err) {
+            console.log(err);
+            done(err);
+        } else {
+            index++;
+            currentImage = index;
+            //if (index < $downloadImagesList.length) {
+            if (index < item.images.length) {
+                downloadAnImage(doneDownloadingAnImage);
+            } else {
+                done(null);
+            }
+        }
+    };
+
+    if (isSkipImage) {
+        done();
+    } else if (item.images && item.images.length) {
+        console.log('== (image counts = )', item.images.length);
+        saveLog('   Image counts : ' + item.images.length);
+        downloadAnImage(doneDownloadingAnImage);
+    } else {
+        console.log('== (image counts = )', 0);
+        done();
+    }
+    
+}
+
+function downloadAllAttachment(done)
+{
+    //currentAttachmentIndex = 1;
+                    
+    if (currentAttachmentIndex < attachments.length) {
+        
+
+        var attachment = attachments[currentAttachmentIndex];
+        // currentAttachmentChunkIndex = 0;
+
+        var doneDownloadingAnAttach = function(err) {
+            if (err) {
+                console.log(err);
+                done(err);
+            } else {
+                currentAttachmentIndex = currentAttachmentIndex + 1;
+                currentAttachmentChunkIndex = 0;
+                if (currentAttachmentIndex < attachments.length) {
+                    attachment = attachments[currentAttachmentIndex];
+                    downloadAttachment(attachment.s3KeyPrefix, doneDownloadingAnAttach);
+                } else {
+                    done(null);
+                }
+            }
+        };
+
+        downloadAttachment(attachment.s3KeyPrefix, doneDownloadingAnAttach);
+    } else {
+        done(null);
+    }
+}
+
+var downloadAttachment = function(id, done) {
+    
     var fileName;
     var fileType;
     var fileSize;
     var numberOfChunks;
-    var chunkIndex = 0;
+    //var chunkIndex = 0;
     var decryptChunkIndex = 0;
     var decryptedFileInUint8Array;
     var decryptedFileIndex;
     var $decryptChunkDeferred = $.Deferred();
     var $decryptChunkPromise = $decryptChunkDeferred.promise();
     $decryptChunkDeferred.resolve();
-    console.log('Download ', id);
+    //console.log('Download ', id);
 
     var downloadedFileProgress = 0;
-    var $progress = $('.attachmentProgressTemplate').clone().removeClass('attachmentProgressTemplate hidden').addClass('attachmentProgressRow');
-    //$progress.find('.progress-bar').css('width', 0);
-    //$attachment.after($progress);
 
-    //changeDownloadingState($attachment, 'Downloading');
+    //currentAttachmentChunkIndex = 0;
+    console.log('currentAttachmentIndex = ', currentAttachmentIndex);
+    console.log('currentAttachmentChunkIndex = ', currentAttachmentChunkIndex);
 
     function downloadDecryptAndAssemble() {
 
@@ -921,6 +968,7 @@ var downloadAttachment = function(id) {
             
             xhr.open('GET', signedURL, true);
             xhr.responseType = 'arraybuffer';
+            console.log('signedURL = ', signedURL);
 
             var attachmentFileProgress = 0;
             var previousProgress = 0;
@@ -945,97 +993,90 @@ var downloadAttachment = function(id) {
                 if (evt.lengthComputable) {
                     attachmentFileProgress = downloadedFileProgress + (evt.loaded / evt.total * 100) / numberOfChunks;
                     attachmentFileProgress = Math.floor(attachmentFileProgress * 100) / 100;
-                    console.log('******file progress:', id, attachmentFileProgress);
-                    saveLog('Attachment downloading : ' + attachmentFileProgress + '%', id);
+                    if (attachmentFileProgress == 'NaN') {
+                        console.log('err_attachmentFileProgress');
+                    }
+                    //console.log('current / total = ', currentAttachmentChunkIndex + ' / ' + numberOfChunks);
+                    console.log('== (attachment, AttachIndex, chunkIndex, prog)', currentAttachmentIndex + 0, currentAttachmentChunkIndex, attachmentFileProgress);
+                    saveLog('  Attachment ' + (currentAttachmentIndex + 0).toString() + ' downloading : ' + attachmentFileProgress + '%', id);
                 }
             }, false);
 
             xhr.onload = function(e) {
-            	var buffer = this.response;
-				var file_name = uuidv1();
-				var current_chunkIndex = chunkIndex;
-				fs.open(download_folder_path + file_name, 'w', function(err, fd) {
-				    if (err) {
-				        throw 'could not open file: ' + err;
-				    }
-				    // write the contents of the buffer, from position 0 to the end, to the file descriptor returned in opening our file
-				    fs.write(fd, new Buffer(buffer), 0, buffer.length, null, (err) => {
-				        if (err) throw 'error writing file: ' + err;
-                        console.log('dbInsertPageAttatchment(chunkIndex)', chunkIndex)
-				        dbInsertPageAttatchment(server_addr + '/memberAPI/preS3ChunkDownload', itemId, current_chunkIndex, id, data='', file_name);
+                var buffer = this.response;
+                var file_name = uuidv1();
+                var current_chunkIndex = currentAttachmentChunkIndex;
+                //var fn = done;
+                fs.open(download_folder_path + file_name, 'w', function(err, fd) {
+                    if (err) {
+                        throw 'could not open file: ' + err;
+                    }
+                    // write the contents of the buffer, from position 0 to the end, to the file descriptor returned in opening our file
+                    fs.write(fd, new Buffer(buffer), 0, buffer.length, null, (err) => {
+                        if (err) throw 'error writing file: ' + err;
+                        //console.log('dbInsertPageAttatchment(chunkIndex)', currentAttachmentChunkIndex)
                         
-				        fs.close(fd, function() {
-				            console.log('wrote the Attatchment file successfully');
-				        });
-				    });
-				});
+                        fs.close(fd, function() {
+                            console.log('  wrote the Attatchment file successfully');
+                            
+                            
+                        });
+                    });
+                });
 
                 var encryptedChunkInArrayBuffer = this.response;
                 isDownloaded = true;
-                console.log('isDownloaded:', isDownloaded);
 
-                console.log('downloaded chunk size:', encryptedChunkInArrayBuffer.byteLength);
-                console.log('Chunk downloaded:', chunkIndex);
-
-                $decryptChunkPromise.done(function() {
-                    chunkIndex++;
-                    downloadedFileProgress = chunkIndex / numberOfChunks * 100;
-                    if (chunkIndex < numberOfChunks)
-                        downloadDecryptAndAssemble();
-                    console.log('Decrypt Chunk:', decryptedFileIndex);
-                    $decryptChunkDeferred = $.Deferred();
-                    $decryptChunkPromise = $decryptChunkDeferred.promise();
-                    decryptChunkInArrayBufferAsync(encryptedChunkInArrayBuffer, decryptedFileInUint8Array, decryptedFileIndex, itemKey, itemIV, function(err, decryptedChunkSize) {
-
-                        if (err) {
-                            alert(err);
-                            $decryptChunkDeferred.reject();
-                        } else {
-                            //console.log('decryptedChunkSize', decryptedChunkSize);
-                            decryptedFileIndex += decryptedChunkSize;
-                            decryptChunkIndex += 1;
-                            //console.log(decryptedFileIndex);
-                            if (decryptChunkIndex === numberOfChunks) {
-                                isDownloading = false;
-                                updatePageStatus(itemId, 'Attatchment');
-                                console.log('____attatchement completed');
-                            }
-                            $decryptChunkDeferred.resolve();
-                        }
-                    });
-                });
+                currentAttachmentChunkIndex++;
+                if (currentAttachmentChunkIndex < numberOfChunks) {
+                    downloadedFileProgress = currentAttachmentChunkIndex / numberOfChunks * 100;
+                    downloadDecryptAndAssemble();
+                } else {
+                    dbInsertPageAttatchment(server_addr + '/memberAPI/preS3ChunkDownload', itemId, current_chunkIndex, id, data='', file_name);
+                    updatePageStatus(itemId, 'Attatchment');
+                    done();
+                }
+                        
             }
             ;
 
             xhr.onerror = xhr.onabort = function() {
-                console.log('isDownloaded:', isDownloaded);
+                //console.log('isDownloaded:', isDownloaded);
                 if (isDownloaded)
                     return;
                 //enableResume();
                 processErrors(null);
             }
-            ;
+
+            xhr.onloadend = function() {
+                if(xhr.status == 404) 
+                    console.log(' **err_replied 404', signedURL     );
+            }
 
             xhr.send();
         }
 
         $.post(server_addr + '/memberAPI/preS3ChunkDownload', {
             itemId: itemId,
-            chunkIndex: chunkIndex.toString(),
+            chunkIndex: currentAttachmentChunkIndex.toString(),
             s3KeyPrefix: id
         }, function(data, textStatus, jQxhr) {
             if (data.status === 'ok') {
-            	dbInsertPageAttatchment(server_addr + '/memberAPI/preS3ChunkDownload', itemId, chunkIndex, id, data);
-                console.log(data);
-                if (chunkIndex === 0) {
-                    var encodedFileName = decryptBinaryString(data.fileName, itemKey, itemIV);
+                dbInsertPageAttatchment(server_addr + '/memberAPI/preS3ChunkDownload', itemId, currentAttachmentChunkIndex, id, data);
+                //console.log(data);
+                if (currentAttachmentChunkIndex === 0) {
+                    //var encodedFileName = decryptBinaryString(data.fileName, itemKey, itemIV);
                     //fileName = forge.util.decodeUtf8(encodedFileName);
                     fileType = data.fileType;
                     fileSize = data.fileSize;
                     numberOfChunks = parseInt(data.numberOfChunks);
-                    console.log('numberOfChunks', numberOfChunks);
+                    currentAttachmentChunkTotal = numberOfChunks;
+                    //console.log('numberOfChunks', numberOfChunks);
                     decryptedFileInUint8Array = new Uint8Array(fileSize);
                     decryptedFileIndex = 0;
+                } else {
+                    numberOfChunks = currentAttachmentChunkTotal;
+                    downloadedFileProgress = currentAttachmentChunkIndex / numberOfChunks * 100;
                 }
                 downloadAChunk(data.signedURL);
             } else {
@@ -1053,30 +1094,74 @@ var downloadAttachment = function(id) {
     return false;
 }
 
+function startDownloadResourceFiles(content, item, fn)
+{
+    // first content images and videos
+    initContentView(content, function() {
+        isSkipContent = true;
+        // download image
+        startDownloadingImages(item, function() {
+            if (isSkipImage == false) {
+                if (attachments.length > 1) {
+                    saveLog('   Attatchment counts : ' + (attachments.length - 1));    
+                }
+            }
+            isSkipImage = true;
+            // download attachment
+            downloadAllAttachment(function() {
+                isSkipAttach = true;
+                fn();
+            });
+        });
+    });
+}
+
 function updatePageStatus(pageId, field)
 {
     dbIncreaseDownloadedCountersOfPage(pageId, field, function(){
-        checkIsCompletedThenSet(pageId);      
+        //checkIsCompletedThenSet(pageId);      
+        //checkReadyAttachment(pageId);      
+    });
+}
+
+function checkReadyAttachment(pageId)
+{
+    dbCheckReadyAttachment(pageId, function(err, isCompleted) {
+        if ( (!err) && (isCompleted) ){
+            // starting download attachments...
+            console.log('== (attachment counts = )', attachments.length-1);
+            downloadAllAttachment(function(result) {
+                //dbSetTotalCountersOfPage(itemId, 'Attatchment', attachments.length - 1);
+                if (result) {
+
+                } else {
+                    console.log('< ' + pageName + ' > finished.');            
+                    saveLog('< ' + pageName + ' > finished.', '', 1);            
+                    currentPage = null;    
+                }
+                
+            });
+        }
     });
 }
 
 function checkIsCompletedThenSet(pageId)
 {
-    console.log('__checkIsCompletedThenSet', pageId);
     dbUpdatePageStatus(pageId, function(err, isCompleted) {
         if ( (!err) && (isCompleted) ){
-            console.info('!!!_complete_checkIsCompletedThenSet (pageId = )', pageId);
-            saveLog('< ' + pageName + ' > finished.');
-            
+            console.log('< ' + pageName + ' > finished.');            
+            saveLog('< ' + pageName + ' > finished.', '', 1);         
             currentPage = null;
+            
         }
     });
 }
 
-function saveLog(message, skey='', isDevMsg=false)
+function saveLog(message, skey='', node=2, isDevMsg=false)
 {
     var logMesage;
     var isDev;
+
     if ((lastMsg == message)) {
         return;
     }
@@ -1089,6 +1174,7 @@ function saveLog(message, skey='', isDevMsg=false)
             letter.logTime = moment().format('YYYY-MM-DD hh:mm');
             letter.message = message;
             letter.skey = skey;
+            letter.node = node;
             ipcRenderer.send( "sendDownloadMessage", letter );
             lastMsg = message;
         }
@@ -1096,16 +1182,14 @@ function saveLog(message, skey='', isDevMsg=false)
     } 
 }
 
-function initContentView(contentFromeServer)
+function initContentView(contentFromeServer, done)
 {
     var pageLocalStorageContent = null;
 
     var content = null;
     $downloadContent = null;
 
-    console.log('starting_initContentView');
-
-    //showCanvasLoadingPage();
+    //console.log('starting_initContentView');
 
     // check localstorage content
     function getKeyContentFromLocalStorage() {
@@ -1128,57 +1212,22 @@ function initContentView(contentFromeServer)
         }
     }
 
-    //getKeyContentFromLocalStorage();
-    
-    // next get contents        
-    if ( (pageContentType == null) && (pageLocalStorageContent == null) )  {
-        //addSelectContentTypeView();    
-        //hideCanvasLoadingPage();
+    // next get contents     
+    if (isSkipContent) {
+        done();
+    } else if ( (pageContentType == null) && (pageLocalStorageContent == null) )  {
+        done();
     } else {
         startGettingContent(function(err) {    
-            //if ($downloadContent) $downloadContent.remove();
-            console.log('finish_startGettingContent');
+            //console.log('finish_startGettingContent');
 
             if (err) {
-                //hideCanvasLoadingPage();
                 console.log(err);
                 alert(err);
             } else {                    
                 var content_data = content;
                 var isLocalStorage ;
-                //console.log('currentVersion = ', currentVersion);
-                //console.log('oldVersion = ', oldVersion);
-
-                // if (oldVersion == '1') {
-                //     $('.widgetIcon').addClass('hidden');
-                // } else {
-                //     $('.widgetIcon').removeClass('hidden');
-                // }
-                
-                // if (isOldVersion()) {
-                //     isLocalStorage = false;
-                // } else {
-                //     isLocalStorage = isLoadFromLocalStorage();
-                // }
-
-                // if (isLocalStorage) {
-                //     content_data = pageLocalStorageContent;
-                //     if (pageContentType == constContentTypeWrite) {
-                //         flgIsLoadingFromLocalStorageForWrite = true;
-                //     }
-                // } 
-
-                // loadLibrayJsCss(pageContentType, function(err) {      
-                //     if (pageContentType == null) {
-                //         addSelectContentTypeView();
-                //     } else {
-                //         loadDataInContentView(content_data);
-                //         $('.contentContainer').removeClass('hidden');    
-                //     }
-                    
-                //     hideCanvasLoadingPage();
-                // }); 
-                
+                done();
             }
         });
     }
@@ -1188,20 +1237,20 @@ function initContentView(contentFromeServer)
         function getWriteTypesContent(done) {
             content = contentFromeServer;
             contentsFromServer = contentFromeServer;            
-            downloadContentImageObjects(contentFromeServer, itemId);
-            handleVideoObjects(contentFromeServer, itemId);
-            done(null);
+            // downloadContentImageObjects(contentFromeServer, itemId);
+            // handleVideoObjects(contentFromeServer, itemId);
+            downloadContentImageObjects(contentFromeServer, itemId, function() {
+                handleVideoObjects(contentFromeServer, itemId, function() {
+                    done(null);
+                });    
+            });
+            
+            
         }
 
         function downloadOtherTypesContent(done) {
-            // $downloadContent = addTemplateOtherTypesStatusAndProgress();
-            // $downloadContent.find('.downloadText').text("Downloading");
-            // $downloadContent.find('.progress-bar').css('width', '0%');                
-            // var id = $downloadImage.attr('id');
-            // var s3CommonKey = $downloadImage.data('s3Key');
-            //var s3Key = s3CommonKey + "_gallery";
             var s3Key = contentFromeServer;
-            console.log('download_s3Key = ', s3Key);
+            //console.log('download_s3Key = ', s3Key);
 
             if (s3Key == null) {
                 done(null); // this is version 1...
@@ -1212,28 +1261,19 @@ function initContentView(contentFromeServer)
                 itemId: itemId,
                 s3Key: s3Key
             }, function(data, textStatus, jQxhr) {
-                console.log('call_preS3Download = ', data.status);
+                //console.log('call_preS3Download = ', data.status);
+                console.log('== (downloaded other type s3Key)');
+                saveLog('  downloaded type contents as s3object');
+
                 if (data.status === 'ok') {
                     var signedURL = data.signedURL;
-                    console.log('signedURL = ', signedURL);
+                    //console.log('signedURL = ', signedURL);
 
                     var xhr = new XMLHttpRequest();
                     xhr.open('GET', signedURL, true);
                     xhr.responseType = 'arraybuffer';
 
-                    // xhr.addEventListener("progress", function(evt) {
-                    //     if (evt.lengthComputable) {
-                    //         var percentComplete = evt.loaded / evt.total * 100;
-                    //         //$downloadImage.find('.progress-bar').css('width', percentComplete + '%');
-                    //         $downloadContent.find('.progress-bar').css('width', percentComplete + '%');
-                    //         //console.log('xhr_download progress = ', percentComplete + '%');
-                    //     }
-                    // }, false);
-
                     xhr.onload = function(e) {
-                        //$downloadContent.find('.downloadText').text("Decrypting");
-                        // $downloadImage.find('.downloadText').text("Decrypting");
-                        // currentImageDownloadXhr = null;
                         var buffer = this.response;
                         var file_name = uuidv1();
                         fs.open(download_folder_path + file_name, 'w', function(err, fd) {
@@ -1246,7 +1286,7 @@ function initContentView(contentFromeServer)
                                 dbInsertPageOtherTypesContentFiles(server_addr + '/memberAPI/preS3Download', itemId, s3Key, file_name);
                                 updatePageStatus(itemId, 'OtherTypesContent');
                                 fs.close(fd, function() {
-                                    console.log('wrote the ContentsImage file successfully');
+                                    //console.log('wrote the ContentsImage file successfully');
                                 });
                             });
                         });
@@ -1256,7 +1296,8 @@ function initContentView(contentFromeServer)
                             itemId: itemId,
                             s3Key: s3Key
                         }, function(data, textStatus, jQxhr) {
-                            console.log('call_postS3Download = ', data.status);
+                            //console.log('call_postS3Download = ', data.status);
+                            console.log('== (downloaded other type contents)');
                             if (data.status === 'ok') {
                                 var item = data.item;
                                 var size = item.size;
@@ -1270,8 +1311,7 @@ function initContentView(contentFromeServer)
                                 var arraybufferContent = decryptedContentDataInUint8Array;
                                 arraybufferContent = ab2str(arraybufferContent);
                                 content = arraybufferContent;
-                                //console.log('decryptedContentDataInUint8Array = ', decryptedContentDataInUint8Array);
-                                //console.log('arraybufferContent=', arraybufferContent);
+                                
                                 done(null);
                             }
                         }, 'json');
@@ -1282,14 +1322,14 @@ function initContentView(contentFromeServer)
                         dbUpdatePageStatusWithError(itemId);
                         //alert('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
                         console.log('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
-                        saveLog('Ooh, Error occured');
+                        saveLog('  Ooh, Error occured');
                     };
 
                     xhr.onreadystatechange = function() {
                         if (xhr.status == 400) { // bad request
                             dbUpdatePageStatusWithError(itemId);
                             xhr.abort();
-                            console.log('Ooh, bad data! It is bad URL request : \n', signedURL);
+                            //console.log('Ooh, bad data! It is bad URL request : \n', signedURL);
                         } else {
                             //alert('Ooh, bad data! It occurred when requesting : \n', signedURL);
                         }
@@ -1322,24 +1362,5 @@ function initContentView(contentFromeServer)
         }
     }
 
-    function isLoadFromLocalStorage() {
-        if (pageLocalStorageContent == null) {
-            return false;
-        }
-        console.log('isLoadFromLocalStorage(pageLocalStorageKey)',pageLocalStorageKey);
-        console.log('isLoadFromLocalStorage(itemId)',itemId);
-        if ( (pageContentType == null) || (pageLocalStorageKey == itemId + pageContentType) ) {
-            if (content != pageLocalStorageContent) {
-                if (confirm('Found item contents in Local Storage.\nWould you like to recover the content from local storage?')) {
-                    pageContentType = pageLocalStorageKey.replace(itemId, '');
-                    console.log('pageContentType from localstorage', pageContentType);
-                    return true;
-                } else {
-                    localStorage.removeItem(pageLocalStorageKey);
-                }
-            }            
-        }
-        return false;
-    }
               
 }

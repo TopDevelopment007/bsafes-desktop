@@ -171,14 +171,14 @@ function encryptLargeBinaryString(binaryString, key, iv) {
             var sliceStr = binaryString.slice(start, binaryString.length);
             var encryptedSlice = encryptBinaryString(sliceStr, key, iv);
             encryptedString += encryptedSlice;
-            console.log(sliceStr.length, encryptedSlice.length, encryptedString.length);
+             // console.log(sliceStr.length, encryptedSlice.length, encryptedString.length);
             break;
         } else {
             var sliceStr = binaryString.slice(start, end);
             var encryptedSlice = encryptBinaryString(sliceStr, key, iv);
             encryptedString += encryptedSlice;
             start = end;
-            console.log(sliceStr.length, encryptedSlice.length, encryptedString.length);
+             // console.log(sliceStr.length, encryptedSlice.length, encryptedString.length);
         }
     }
 
@@ -198,14 +198,14 @@ function decryptLargeBinaryString(binaryString, key, iv) {
             var sliceStr = binaryString.slice(start, binaryString.length);
             var decryptedSlice = decryptBinaryString(sliceStr, key, iv);
             decryptedString += decryptedSlice;
-            console.log(sliceStr.length, decryptedSlice.length, decryptedString.length);
+             // console.log(sliceStr.length, decryptedSlice.length, decryptedString.length);
             break;
         } else {
             var sliceStr = binaryString.slice(start, end);
             var decryptedSlice = decryptBinaryString(sliceStr, key, iv);
             decryptedString += decryptedSlice;
             start = end;
-            console.log(sliceStr.length, decryptedSlice.length, decryptedString.length);
+             // console.log(sliceStr.length, decryptedSlice.length, decryptedString.length);
         }
     }
     return decryptedString;
@@ -221,7 +221,7 @@ function encryptArrayBuffer(arrayBuffer, key, iv) {
     var encryptedSlice;
 
     var encryptedDataSize = __estimateEncryptedDataSize(arrayBuffer.byteLength);
-    console.log("string.length, encryptedDataSize", arrayBuffer.byteLength, encryptedDataSize);
+     // console.log("string.length, encryptedDataSize", arrayBuffer.byteLength, encryptedDataSize);
 
     var encryptedUint8Array = new Uint8Array(encryptedDataSize);
     var numberOfSlices = 0;
@@ -263,14 +263,14 @@ function encryptArrayBufferAsync(arrayBuffer, key, iv, fn) {
     var encryptedSlice;
 
     var encryptedDataSize = __estimateEncryptedDataSize(arrayBuffer.byteLength);
-    console.log("string.length, encryptedDataSize", arrayBuffer.byteLength, encryptedDataSize);
+     // console.log("string.length, encryptedDataSize", arrayBuffer.byteLength, encryptedDataSize);
 
     var encryptedUint8Array = new Uint8Array(encryptedDataSize);
     var numberOfSlices = 0;
 
     function encryptASlice() {
         numberOfSlices++;
-        console.log('encrypting slice:', numberOfSlices);
+         // console.log('encrypting slice:', numberOfSlices);
         sliceStr = ""
         end = start + sliceLength;
         if (end >= (arrayBuffer.byteLength)) {
@@ -278,9 +278,9 @@ function encryptArrayBufferAsync(arrayBuffer, key, iv, fn) {
                 sliceStr += String.fromCharCode(view.getUint8(offset, false));
             }
             encryptedSlice = encryptBinaryString(sliceStr, key, iv);
-            console.log('encryptedSlice.length:', encryptedSlice.length);
+             // console.log('encryptedSlice.length:', encryptedSlice.length);
             //var verifiedSlice = decryptBinaryString(encryptedSlice, key, iv);
-            //console.log('verifiedSlice.length:', verifiedSlice.length);
+            // // console.log('verifiedSlice.length:', verifiedSlice.length);
             for (var offset = encryptedStart; offset < encryptedStart + encryptedSlice.length; offset++) {
                 encryptedUint8Array[offset] = encryptedSlice.charCodeAt(offset - encryptedStart);
             }
@@ -290,9 +290,9 @@ function encryptArrayBufferAsync(arrayBuffer, key, iv, fn) {
                 sliceStr += String.fromCharCode(view.getUint8(offset, false));
             }
             encryptedSlice = encryptBinaryString(sliceStr, key, iv);
-            console.log('encryptedSlice.length:', encryptedSlice.length);
+             // console.log('encryptedSlice.length:', encryptedSlice.length);
             //var verifiedSlice = decryptBinaryString(encryptedSlice, key, iv);
-            //console.log('verifiedSlice.length:', verifiedSlice.length);
+            // // console.log('verifiedSlice.length:', verifiedSlice.length);
             for (var offset = encryptedStart; offset < encryptedStart + __encryptedDataSliceSize; offset++) {
                 encryptedUint8Array[offset] = encryptedSlice.charCodeAt(offset - encryptedStart);
             }
@@ -320,17 +320,17 @@ function decryptArrayBufferAsync(arrayBuffer, key, iv, fn) {
 
     function decryptASlice() {
         numberOfSlices++;
-        console.log('decrypting slice:', numberOfSlices);
+         // console.log('decrypting slice:', numberOfSlices);
         sliceStr = "";
         end = start + sliceLength;
         if (end >= (arrayBuffer.byteLength)) {
             for (var offset = start; offset < arrayBuffer.byteLength; offset++) {
                 sliceStr += String.fromCharCode(view.getUint8(offset, false));
             }
-            //console.log('sliceStr length:', sliceStr.length);
+            // // console.log('sliceStr length:', sliceStr.length);
             decryptedSlice = decryptBinaryString(sliceStr, key, iv);
             decryptedLength += decryptedSlice.length;
-            //console.log('decryptedSlice length, totalLength:', decryptedSlice.length, decryptedLength);
+            // // console.log('decryptedSlice length, totalLength:', decryptedSlice.length, decryptedLength);
             for (var offset = decryptedStart; offset < decryptedStart + decryptedSlice.length; offset++) {
                 decryptedUint8Array[offset] = decryptedSlice.charCodeAt(offset - decryptedStart);
             }
@@ -340,10 +340,10 @@ function decryptArrayBufferAsync(arrayBuffer, key, iv, fn) {
             for (var offset = start; offset < end; offset++) {
                 sliceStr += String.fromCharCode(view.getUint8(offset, false));
             }
-            //console.log('sliceStr length:', sliceStr.length);
+            // // console.log('sliceStr length:', sliceStr.length);
             decryptedSlice = decryptBinaryString(sliceStr, key, iv);
             decryptedLength += decryptedSlice.length;
-            //console.log('decryptedSlice length, totalLength:', decryptedSlice.length, decryptedLength);
+            // // console.log('decryptedSlice length, totalLength:', decryptedSlice.length, decryptedLength);
             for (var offset = decryptedStart; offset < decryptedStart + __sliceLength; offset++) {
                 decryptedUint8Array[offset] = decryptedSlice.charCodeAt(offset - decryptedStart);
             }
@@ -412,21 +412,21 @@ function decryptChunkInArrayBufferAsync(arrayBuffer, uint8Array, uint8ArrayStart
     var numberOfSlices = 0;
     var decryptedLength = 0;
 
-    console.log('Decrypting chunk(arrayBufferSize, uint8ArraySize, uint8ArrayStart):', arrayBuffer.byteLength, uint8Array.byteLength, uint8ArrayStart);
+     // console.log('Decrypting chunk(arrayBufferSize, uint8ArraySize, uint8ArrayStart):', arrayBuffer.byteLength, uint8Array.byteLength, uint8ArrayStart);
 
     function decryptASlice() {
         numberOfSlices++;
-        console.log('decrypting slice:(index)', numberOfSlices);
+        // // console.log('decrypting slice:(index)', numberOfSlices);
         sliceStr = "";
         end = start + sliceLength;
         if (end >= (arrayBuffer.byteLength)) {
             for (var offset = start; offset < arrayBuffer.byteLength; offset++) {
                 sliceStr += String.fromCharCode(view.getUint8(offset, false));
             }
-            console.log('decrypting slice size', sliceStr.length);
+            // // console.log('decrypting slice size', sliceStr.length);
             decryptedSlice = decryptBinaryString(sliceStr, key, iv);
             decryptedLength += decryptedSlice.length;
-            console.log('decryptedSlice length, totalLength:', decryptedSlice.length, decryptedLength);
+            // // console.log('decryptedSlice length, totalLength:', decryptedSlice.length, decryptedLength);
             for (var offset = decryptedStart; offset < decryptedStart + decryptedSlice.length; offset++) {
                 var uint8ArrayIndex = uint8ArrayStart + offset;
                 if (uint8ArrayIndex === uint8Array.byteLength) {
@@ -435,16 +435,16 @@ function decryptChunkInArrayBufferAsync(arrayBuffer, uint8Array, uint8ArrayStart
                 }
                 uint8Array[uint8ArrayIndex] = decryptedSlice.charCodeAt(offset - decryptedStart);
             }
-            console.log('offset:', offset);
+            // // console.log('offset:', offset);
             fn(null, offset);
         } else {
             for (var offset = start; offset < end; offset++) {
                 sliceStr += String.fromCharCode(view.getUint8(offset, false));
             }
-            console.log('decrypting slice size', sliceStr.length);
+             // console.log('decrypting slice size', sliceStr.length);
             decryptedSlice = decryptBinaryString(sliceStr, key, iv);
             decryptedLength += decryptedSlice.length;
-            console.log('decryptedSlice length, totalLength:', decryptedSlice.length, decryptedLength);
+             // console.log('decryptedSlice length, totalLength:', decryptedSlice.length, decryptedLength);
             for (var offset = decryptedStart; offset < decryptedStart + __sliceLength; offset++) {
                 var uint8ArrayIndex = uint8ArrayStart + offset;
                 if (uint8ArrayIndex === uint8Array.byteLength) {
