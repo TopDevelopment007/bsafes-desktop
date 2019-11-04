@@ -223,23 +223,7 @@ ipcMain.on( "setMyGlobalVariable", ( event, myGlobalVariableValue ) => {
 } );
 
 ipcMain.on( "setDownloadStatus", ( event, isStopped ) => {
-  global.isStopped = isStopped;
-
-  if (isStopped) {
-    const err_dlg_options = {
-      type: 'error',
-      buttons: ['Ok'],
-      defaultId: 2,
-      title: 'Error',
-      message: 'Ohh, Network connection has broken. Please Check it out.',
-      detail: '',
-    };
-
-    dialog.showMessageBox(null, err_dlg_options, (response, checkboxChecked) => {
-      console.log(response);
-      console.log(checkboxChecked);
-    });
-  }
+  global.isStopped = isStopped;  
 } );
 
 ipcMain.on( "saveLogModal", ( event, modal ) => {
@@ -260,18 +244,18 @@ ipcMain.on( "setNavigateFolder", ( event, myGlobalVariableValue ) => {
 } );
 
 ipcMain.on( "showErrDialong", ( event, myGlobalVariableValue ) => {
+	const err_dlg_options = {
+	  type: 'error',
+	  buttons: ['Ok'],
+	  defaultId: 2,
+	  title: 'Error!',
+	  message: 'Ohh, Network connection has broken. Please Check it out.',
+	  detail: '',
+	};
 
-  // const err_dlg_options = {
-  //   type: 'error',
-  //   buttons: ['Ok'],
-  //   defaultId: 2,
-  //   title: 'Error',
-  //   message: 'Ohh, Network connection has broken. Please Check it out.',
-  //   detail: '',
-  // };
-
-  // dialog.showMessageBox(null, err_dlg_options, (response, checkboxChecked) => {
-  //   console.log(response);
-  //   console.log(checkboxChecked);
-  // });
+	dialog.showMessageBox(null, err_dlg_options, (response, checkboxChecked) => {
+	  // console.log(response);
+	  // console.log(checkboxChecked);
+	});
+  
 } );

@@ -126,6 +126,7 @@ function processErrors(jqXHR)
         stoppedPage = currentPage;
         saveLog('Ooh, Internet connection has broken.', '', 0);
         ipcRenderer.send( "setDownloadStatus", true );
+        ipcRenderer.send( "showErrDialong", null );
     } else if(jqXHR.status==500) { // internal server error
         msg = 'internal server error';
     } else {
