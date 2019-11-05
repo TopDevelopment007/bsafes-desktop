@@ -31,6 +31,8 @@ var constContentTypeMxGraph = 'contentType#MxGraph';
 var isSopped = false;
 var isSkipGetItem = false;
 var isSkipContent = false;
+var isSkipContentImage = false;
+var isSkipContentVideo = false;
 var isSkipImage = false;
 var isSkipAttach = false;
 // variables for attachments
@@ -45,20 +47,40 @@ var currentAttachmentChunkIndex;
 var currentAttachmentChunkTotal;
 
 
+function init() 
+{
+	var isGoOn = true;
 
-setInterval(interval, 500);
+	if (db == null) {
+		if (require('electron').remote != undefined) {
+			isGoOn = false;
+			console.log('completed initialize thread...');
+	        db = require('electron').remote.getGlobal('sqliteDB');
+	        setSQLiteDB(db);  
+	        interval();      
+	    }
+    }
+
+    if (isGoOn) {
+    	setTimeout(init, 200);
+    }
+}
+
+init();
+//setInterval(interval, 500);
+//interval();
 
 function interval()
 {
-    if (require('electron').remote == undefined) {
-        return;
-    }
+    // if (require('electron').remote == undefined) {
+    //     return;
+    // }
 
-    if (db == null) {
-        db = require('electron').remote.getGlobal('sqliteDB');
-        setSQLiteDB(db);
+    // if (db == null) {
+    //     db = require('electron').remote.getGlobal('sqliteDB');
+    //     setSQLiteDB(db);
         
-    }
+    // }
     
     // console.log('____ (arrPageCounts)', arrPage.length);
     // console.log('____ (currentPage)', currentPage);
@@ -90,31 +112,44 @@ function interval()
             }
 
             currentPage = arrPageList[0];   
-            console.log('currentPage', currentPage);       
-            dbUpdatePageStatus(currentPage, function(err, isCompleted) {
-                if (isCompleted) {
-                    currentPage = null;
-                    return;
-                } else {
-                    if (currentPage) {
-                        isSkipGetItem = false;
-                        isSkipContent = false;
-                        isSkipImage = false;
-                        isSkipAttach = false;
-                        downloadPage(currentPage);    
-                    }                    
-                }
-            });
+            console.log('======currentPage', currentPage);   
+
+      //       dbUpdatePageStatus(currentPage, function(err, isCompleted, row) {
+      //           if (isCompleted) {
+      //               currentPage = null;
+      //           } else {
+      //               if (currentPage) {
+      //                   isSkipGetItem = false;
+      //                   isSkipContent = false;
+      //                   isSkipContentImage = false;
+						// isSkipContentVideo = false;
+      //                   isSkipImage = false;
+      //                   isSkipAttach = false;
+      //                   downloadPage(currentPage);    
+      //               }                    
+      //           }
+      //       });
+      		isSkipGetItem = false;
+            isSkipContent = false;
+            isSkipContentImage = false;
+			isSkipContentVideo = false;
+            isSkipImage = false;
+            isSkipAttach = false;
+            downloadPage(currentPage);
 
         });
     } else {
-        dbUpdatePageStatus(currentPage, function(err, isCompleted) {
-            if (isCompleted) {
-                currentPage = null;
-                return;
-            } 
-        });
+    	checkIsCompletedThenSet(currentPage);
     }
+    // else {
+    //     dbUpdatePageStatus(currentPage, function(err, isCompleted) {
+    //         if (isCompleted) {
+    //             currentPage = null;
+    //             return;
+    //         } 
+    //     });
+    // }
+    setTimeout(interval, 200);
 }
 
 function processErrors(jqXHR)
@@ -156,13 +191,16 @@ function downloadPage(pageId)
 
                     function waitForPageSettingTotalCounters(itemId)
                     {
-                        dbCheckPageTotalCounters(itemId, function(isReady) {
-                            if (isReady) {
-                                checkIsCompletedThenSet(pageId);
-                            } else {
-                                setTimeout(waitForPageSettingTotalCounters, 200, itemId );
-                            }
-                        })
+                    	if (currentPage) {
+                    		dbCheckPageTotalCounters(itemId, function(isReady) {
+	                            if (isReady) {
+	                                //checkIsCompletedThenSet(pageId);
+	                            } else {
+	                                setTimeout(waitForPageSettingTotalCounters, 200, itemId );
+	                            }
+	                        })	
+                    	}
+                        
                     }
                     waitForPageSettingTotalCounters(pageId);
                     
@@ -231,7 +269,7 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
         });
         return;
     }
-    saveLog('< ' + thisItemId + '> started.', '', 1);
+    // saveLog('< ' + thisItemId + '> started.', '', 1);
 
     $.post(server_addr + '/memberAPI/getPageItem', options, function(data, textStatus, jQxhr) {
         if (data.status === 'ok') {
@@ -335,8 +373,6 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                         } catch (err) {
                             alert(err);
                         }
-                        //downloadContentImageObjects(item_content, thisItemId);
-                        //handleVideoObjects(item_content, thisItemId);
                     } else {
                         dbSetTotalCountersOfPage(itemId, 'ContentsImage', 0);
                         dbSetTotalCountersOfPage(itemId, 'Video', 0);
@@ -344,9 +380,10 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
 
                     // initContentView(content);
 
-
+                    var image_length = 0;
                     if (item.images && item.images.length) {
-                        dbSetTotalCountersOfPage(itemId, 'Image', item.images.length);
+                    	image_length = item.images.length;
+                        // dbSetTotalCountersOfPage(itemId, 'Image', item.images.length);
 
                         function buildDownloadImagesList() {
                             var images = item.images;
@@ -367,15 +404,9 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
 
                         buildDownloadImagesList();
                     } else {
-                        dbSetTotalCountersOfPage(itemId, 'Image', 0);
+                        // dbSetTotalCountersOfPage(itemId, 'Image', 0);
                     }
 
-
-                    attachments = item.attachments;                    
-
-                    dbSetTotalCountersOfPage(itemId, 'Attatchment', attachments.length - 1);
-                    console.log('  == Attachment counts : ' + (attachments.length - 1));
-                    
                     page_content = content;
                     page_item = item;
                     isSkipGetItem = true;
@@ -386,19 +417,52 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                     currentAttachmentIndex = 1;
                     currentAttachmentChunkIndex = 0;
 
+                    var content_image_length = 0;
+                    var content_video_length = 0;
+
+                    if ( (page_content) && (pageContentType == constContentTypeWrite) ){
+                    	//console.log('page_content = ', page_content);
+                    	var encryptedImages = $(page_content).find(".bSafesImage");
+                    	var videoDownloads = $(page_content).find(".bSafesDownloadVideo");
+                    	content_image_length = encryptedImages.length;
+                    	content_video_length = videoDownloads.length;
+                    }
+
+                    // counts content image.                    
+				    dbSetTotalCountersOfPage(itemId, 'ContentsImage', content_image_length);
+				    console.log('  == (contents_image counts = )', content_image_length);
+				    if (content_image_length) {
+				    	saveLog('   Content Image counts : ' + content_image_length);
+				    }
+
+				    // counts content video.				    
+				    dbSetTotalCountersOfPage(itemId, 'Video', content_video_length);
+				    console.log('  == (contents_video counts = )', content_video_length);
+    				if (content_video_length) {
+				    	saveLog('   Content Video counts : ' + content_video_length);    					
+    				}
+
+    				// counts image.
+    				dbSetTotalCountersOfPage(itemId, 'Image', image_length);
+    				console.log('  == (Iamge counts = )', image_length);
+    				if (image_length) {
+				    	saveLog('   Image counts : ' + image_length);    					
+    				}
+
+    				// counts attachments.
+                    attachments = item.attachments; 
+                    var attachments_length = attachments.length - 1;                   
+
+                    dbSetTotalCountersOfPage(itemId, 'Attatchment', attachments_length);
+                    console.log('  == Attachment counts : ' + attachments_length);
+                    if (attachments_length) {
+                    	saveLog('   Attachment counts : ' + attachments_length); 
+                    }
+
                     startDownloadResourceFiles(page_content, page_item, function() {
                         fn();
                     });
                     
-
-                    // for (var i = 1; i < attachments.length; i++) {
-                    //     var attachment = attachments[i];
-                    //     var encodedFileName = decryptBinaryString(attachment.fileName, itemKey, itemIV);
-                    //     var fileName = forge.util.decodeUtf8(encodedFileName);
-
-                    //     downloadAttachment(attachment.s3KeyPrefix, i);
-                    // }
-
                     
                 } // end function decryptItem()
 
@@ -588,21 +652,21 @@ function isImageDisplayed(imageElement) {
 
 function downloadContentImageObjects(item_content, itemId, done) {
 
-    var encryptedImages = $(item_content).find(".bSafesImage");
+	if (isSkipContentImage) {
+		done();
+	} else {
+		var encryptedImages = $(item_content).find(".bSafesImage");
 
-    dbSetTotalCountersOfPage(itemId, 'ContentsImage', encryptedImages.length);
-    console.log('  == (contents_image counts = )', encryptedImages.length);
+	    if (encryptedImages.length) {
+	        downloadImageObject(item_content, itemId, currentContentImage, function () {
+	            done();
+	        });
+	    } else {
+	        done();
+	    }
+	}
 
-    if (encryptedImages.length) {
-        saveLog('   Content Image counts : ' + encryptedImages.length);
-
-        downloadImageObject(item_content, itemId, currentContentImage, function () {
-            done();
-        });
-
-    } else {
-        done();
-    }
+    
 }
 
 function downloadImageObject(item_content, itemId, index, done) {
@@ -696,9 +760,9 @@ function downloadVideoObject(item_content, itemId, index, done) {
 
     var videoDownloads = $(item_content).find(".bSafesDownloadVideo");
 
-    if (index < videoDownloads.length) {
+    if (currentContentVideo < videoDownloads.length) {
 
-        $videoDownload = $(videoDownloads[index]);
+        $videoDownload = $(videoDownloads[currentContentVideo]);
 
         $videoDownload.off('click');
         $videoDownload.addClass('bSafesDownloading');
@@ -721,8 +785,8 @@ function downloadVideoObject(item_content, itemId, index, done) {
                     if (evt.lengthComputable) {
                         var percentComplete = evt.loaded / evt.total * 100;
 
-                        console.log('  == (video)', index + 1, s3Key, percentComplete);
-                        saveLog('  Video ' + (index + 1).toString() + ' downloading : ' + percentComplete + '%', s3Key);
+                        console.log('  == (video)', currentContentVideo + 1, s3Key, percentComplete);
+                        saveLog('  Video ' + (currentContentVideo + 1).toString() + ' downloading : ' + percentComplete + '%', s3Key);
                         $(document.getElementById('progressBar' + id)).width(percentComplete + '%');
                     }
                 }, false);
@@ -741,10 +805,11 @@ function downloadVideoObject(item_content, itemId, index, done) {
                             dbInsertPageVideo(server_addr + '/memberAPI/preS3Download', itemId, s3Key, data='', file_name);
                             updatePageStatus(itemId, 'Video');
                             fs.close(fd, function() {
-                                saveLog('  Content Video ' + (index + 1).toString() + ' downloaded');
-                                index = index + 1;
-                                currentContentVideo = index;
-                                console.log('wrote the Video file successfully');
+                                saveLog('  Content Video ' + (currentContentVideo + 1).toString() + ' downloaded');
+                                //index = index + 1;
+                                //currentContentVideo = index;
+                                done();
+                                //console.log('wrote the Video file successfully');
                             });
                         });
                     });
@@ -775,23 +840,33 @@ function downloadVideoObject(item_content, itemId, index, done) {
 ;
 function handleVideoObjects(item_content, itemId, done) {
 
-    var videoDownloads = $(item_content).find(".bSafesDownloadVideo");
+	if (isSkipContentVideo) {
+		done();
+	} else {
+		var videoDownloads = $(item_content).find(".bSafesDownloadVideo");
 
-    dbSetTotalCountersOfPage(itemId, 'Video', videoDownloads.length);
-    
-
-    if (videoDownloads.length) {
-        console.log('  == (video counts = )', videoDownloads.length);
-        saveLog('   Video counts : ' + videoDownloads.length);
-
-        downloadVideoObject(item_content, itemId, currentContentVideo, function() {
-            done();
-        })
-    } else {
-        console.log('  == (video counts = )', 0);
-        done();
-    }
-
+	    if (currentContentVideo < videoDownloads.length) {
+	 
+	        var doneDownloadingAnVideo = function(err) {
+	            if (err) {
+	                console.log(err);
+	                done(err);
+	            } else {
+	                currentContentVideo = currentContentVideo + 1;
+	                //currentAttachmentChunkIndex = 0;
+	                if (currentContentVideo < videoDownloads.length) {
+	                    //attachment = attachments[currentAttachmentIndex];
+	                    downloadVideoObject(item_content, itemId, currentContentVideo, doneDownloadingAnVideo);
+	                } else {
+	                    done(null);
+	                }
+	            }
+	        };
+	        downloadVideoObject(item_content, itemId, currentContentVideo, doneDownloadingAnVideo);
+	    } else {
+	        done(null);
+	    }
+	}
 }
 
 function startDownloadingImages(item, done) {
@@ -888,8 +963,6 @@ function startDownloadingImages(item, done) {
     if (isSkipImage) {
         done();
     } else if (item.images && item.images.length) {
-        console.log('  == (image counts = )', item.images.length);
-        saveLog('   Image counts : ' + item.images.length);
         downloadAnImage(doneDownloadingAnImage);
     } else {
         console.log('  == (image counts = )', 0);
@@ -1103,11 +1176,6 @@ function startDownloadResourceFiles(content, item, fn)
         isSkipContent = true;
         // download image
         startDownloadingImages(item, function() {
-            if (isSkipImage == false) {
-                if (attachments.length > 1) {
-                    saveLog('   Attatchment counts : ' + (attachments.length - 1));    
-                }
-            }
             isSkipImage = true;
             // download attachment
             downloadAllAttachment(function() {
@@ -1120,44 +1188,23 @@ function startDownloadResourceFiles(content, item, fn)
 
 function updatePageStatus(pageId, field)
 {
-    dbIncreaseDownloadedCountersOfPage(pageId, field, function(){
-        //checkIsCompletedThenSet(pageId);      
-        //checkReadyAttachment(pageId);      
+    dbIncreaseDownloadedCountersOfPage(pageId, field, function(){  
     });
 }
 
-function checkReadyAttachment(pageId)
-{
-    dbCheckReadyAttachment(pageId, function(err, isCompleted) {
-        if ( (!err) && (isCompleted) ){
-            // starting download attachments...
-            console.log('  == (attachment counts = )', attachments.length-1);
-            downloadAllAttachment(function(result) {
-                //dbSetTotalCountersOfPage(itemId, 'Attatchment', attachments.length - 1);
-                if (result) {
-
-                } else {
-                    console.log('< ' + pageName + ' > finished.');            
-                    saveLog('< ' + pageName + ' > finished.', '', 1);            
-                    saveLog('< ' + pageId + ' > finished.', '', 1);            
-                    currentPage = null;    
-                }
-                
-            });
-        }
-    });
-}
 
 function checkIsCompletedThenSet(pageId)
 {
-    dbUpdatePageStatus(pageId, function(err, isCompleted) {
+    dbUpdatePageStatus(pageId, function(err, isCompleted, row) {
         if ( (!err) && (isCompleted) ){
             console.log('< ' + pageName + ' > finished.');            
             saveLog('< ' + pageName + ' > finished.', '', 1);     
             saveLog('< ' + pageId + ' > finished.', '', 1);      
-            currentPage = null;
-
-            
+            currentPage = null;           
+        } else {
+        	//console.log('< ' + pageName + ' >  something is wrong.'); 
+        	//console.log('row = ', row);
+        	//setTimeout(checkIsCompletedThenSet, 200);
         }
     });
 }
@@ -1241,11 +1288,12 @@ function initContentView(contentFromeServer, done)
 
         function getWriteTypesContent(done) {
             content = contentFromeServer;
-            contentsFromServer = contentFromeServer;            
-            // downloadContentImageObjects(contentFromeServer, itemId);
-            // handleVideoObjects(contentFromeServer, itemId);
+            contentsFromServer = contentFromeServer;          
+
             downloadContentImageObjects(contentFromeServer, itemId, function() {
+            	isSkipContentImage = true;
                 handleVideoObjects(contentFromeServer, itemId, function() {
+                	isSkipContentVideo = true;
                     done(null);
                 });    
             });
@@ -1296,30 +1344,7 @@ function initContentView(contentFromeServer, done)
                             });
                         });
 
-                        var encryptedContentDataInArrayBuffer = this.response;
-                        $.post(server_addr + '/memberAPI/postS3Download', {
-                            itemId: itemId,
-                            s3Key: s3Key
-                        }, function(data, textStatus, jQxhr) {
-                            //console.log('call_postS3Download = ', data.status);
-                            console.log('  == (downloaded other type contents)');
-                            if (data.status === 'ok') {
-                                var item = data.item;
-                                var size = item.size;
-
-                                var decryptedContentDataInUint8Array = decryptArrayBuffer(encryptedContentDataInArrayBuffer, itemKey, itemIV);
-                                function ab2str(buf) {
-                                    //return String.fromCharCode.apply(null, new Uint8Array(buf));
-                                    var str = new TextDecoder("utf-8").decode(buf);
-                                    return str;
-                                }
-                                var arraybufferContent = decryptedContentDataInUint8Array;
-                                arraybufferContent = ab2str(arraybufferContent);
-                                content = arraybufferContent;
-                                
-                                done(null);
-                            }
-                        }, 'json');
+                        
 
                     };
 

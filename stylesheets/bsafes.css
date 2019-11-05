@@ -1034,3 +1034,7 @@ table.mxPopupMenu hr {
   color: grey;
   margin-left: 50px;
 }
+
+.moveItemsPathItemsList  {
+  overflow: auto;
+}

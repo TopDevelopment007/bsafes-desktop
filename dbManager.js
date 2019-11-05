@@ -269,15 +269,15 @@ function dbUpdatePageStatus(pageId, done)
 					} else {
 					}	
 				} else {
-					// console.log('counterContentsImages', pageId, row.counterContentsImages);
-					// console.log('counterVideos', pageId, row.counterVideos);
-					// console.log('counterImages', pageId, row.counterImages);
-					// console.log('counterAttatchments', pageId, row.counterAttatchments);
+					console.log('counterContentsImages', row.downloadedContentsImages, row.counterContentsImages);
+					console.log('counterVideos', row.downloadedVideos, row.counterVideos);
+					console.log('counterImages', row.downloadedImages, row.counterImages);
+					console.log('counterAttatchments', row.downloadedAttatchments, row.counterAttatchments);
 				}
 			}
 			
 		}
-		done(error, isCompleted);		
+		done(error, isCompleted, row);		
 		//console.log('dbUpdatePageStatus', pageId);
 	});
 }
