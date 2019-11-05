@@ -114,21 +114,6 @@ function interval()
             currentPage = arrPageList[0];   
             console.log('======currentPage', currentPage);   
 
-      //       dbUpdatePageStatus(currentPage, function(err, isCompleted, row) {
-      //           if (isCompleted) {
-      //               currentPage = null;
-      //           } else {
-      //               if (currentPage) {
-      //                   isSkipGetItem = false;
-      //                   isSkipContent = false;
-      //                   isSkipContentImage = false;
-						// isSkipContentVideo = false;
-      //                   isSkipImage = false;
-      //                   isSkipAttach = false;
-      //                   downloadPage(currentPage);    
-      //               }                    
-      //           }
-      //       });
       		isSkipGetItem = false;
             isSkipContent = false;
             isSkipContentImage = false;
@@ -269,7 +254,8 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
         });
         return;
     }
-    // saveLog('< ' + thisItemId + '> started.', '', 1);
+    
+    saveLog('< ' + thisItemId + '> started.', '', 1);
 
     $.post(server_addr + '/memberAPI/getPageItem', options, function(data, textStatus, jQxhr) {
         if (data.status === 'ok') {
@@ -1202,8 +1188,8 @@ function checkIsCompletedThenSet(pageId)
             saveLog('< ' + pageId + ' > finished.', '', 1);      
             currentPage = null;           
         } else {
-        	//console.log('< ' + pageName + ' >  something is wrong.'); 
-        	//console.log('row = ', row);
+        	console.log('< ' + pageName + ' >  something is wrong.'); 
+        	console.log('row = ', row);
         	//setTimeout(checkIsCompletedThenSet, 200);
         }
     });
@@ -1338,6 +1324,7 @@ function initContentView(contentFromeServer, done)
                                 if (err) throw 'error writing file: ' + err;
                                 dbInsertPageOtherTypesContentFiles(server_addr + '/memberAPI/preS3Download', itemId, s3Key, file_name);
                                 updatePageStatus(itemId, 'OtherTypesContent');
+                                done();
                                 fs.close(fd, function() {
                                     //console.log('wrote the ContentsImage file successfully');
                                 });

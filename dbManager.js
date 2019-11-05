@@ -268,7 +268,8 @@ function dbUpdatePageStatus(pageId, done)
 						isCompleted = true;
 					} else {
 					}	
-				} else {
+				} else {	
+					console.log('pageId = ', pageId);
 					console.log('counterContentsImages', row.downloadedContentsImages, row.counterContentsImages);
 					console.log('counterVideos', row.downloadedVideos, row.counterVideos);
 					console.log('counterImages', row.downloadedImages, row.counterImages);

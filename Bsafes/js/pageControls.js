@@ -2527,8 +2527,8 @@ function downloadImageObject(encryptedImageElement) {
                     s3Key: s3CommonKey
                 }, function(data, textStatus, jQxhr) {
                     if (data.status === 'ok') {
-                        var item = data.item;
-                        var size = item.size;
+                        //var item = data.item;
+                        //var size = item.size;
 
                         var decryptedImageDataInUint8Array = decryptArrayBuffer(encryptedImageDataInArrayBuffer, itemKey, itemIV);
                         var link = window.URL.createObjectURL(new Blob([decryptedImageDataInUint8Array]), {
@@ -2923,8 +2923,8 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                                                         s3Key: s3CommonKey
                                                     }, function(data, textStatus, jQxhr) {
                                                         if (data.status === 'ok') {
-                                                            var item = data.item;
-                                                            var size = item.size;
+                                                            //var item = data.item;
+                                                            //var size = item.size;
 
                                                             var decryptedImageDataInUint8Array = decryptArrayBuffer(encryptedImageDataInArrayBuffer, itemKey, itemIV);
                                                             var link = window.URL.createObjectURL(new Blob([decryptedImageDataInUint8Array]), { type: 'image/jpeg' });
@@ -3602,19 +3602,6 @@ function loadLibrayJsCss(content_type, done)
         loadJS("https://kendo.cdn.telerik.com/2019.2.619/js/jszip.min.js", function() {
             loadJS("https://kendo.cdn.telerik.com/2019.2.619/js/kendo.all.min.js", function() {
                 
-                // $('.contentContainer').append('<div id="spreadsheet"></div>');
-                // $('#spreadsheet').css('width', '100%');
-                // $('#spreadsheet').css('height', '100%');
-                // $("#spreadsheet").kendoSpreadsheet({change: onSpreadsheetChange});
-                // spreadsheet = $("#spreadsheet").data("kendoSpreadsheet");
-                // spreadsheet.resize();
-
-                // timerSaveSpreedsheet();
-                // function onSpreadsheetChange(arg) {
-                //     console.log('change_event(spreedsheet)', arg);
-                //     timerSaveSpreedsheet();                
-                // }
-
                 addIconAndButtons();
                 done(null);
             });
@@ -4002,8 +3989,8 @@ function initContentView(contentFromeServer)
                         }, function(data, textStatus, jQxhr) {
                             console.log('call_postS3Download = ', data.status);
                             if (data.status === 'ok') {
-                                var item = data.item;
-                                var size = item.size;
+                                //var item = data.item;
+                                //var size = item.size;
 
                                 var decryptedContentDataInUint8Array = decryptArrayBuffer(encryptedContentDataInArrayBuffer, itemKey, itemIV);
                                 function ab2str(buf) {
