@@ -231,10 +231,11 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
         });
         return;
     }
+    saveLog('< ' + thisItemId + '> started.', '', 1);
 
     $.post(server_addr + '/memberAPI/getPageItem', options, function(data, textStatus, jQxhr) {
         if (data.status === 'ok') {
-            console.log('== (downloaded page item)');
+            console.log('  == (downloaded page item)');
             dbInsertPageContents(server_addr + '/memberAPI/getPageItem', thisItemId, data);
 
             if (data.item) {
@@ -373,7 +374,7 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                     attachments = item.attachments;                    
 
                     dbSetTotalCountersOfPage(itemId, 'Attatchment', attachments.length - 1);
-                    console.log(' == Attachment counts : ' + (attachments.length - 1));
+                    console.log('  == Attachment counts : ' + (attachments.length - 1));
                     
                     page_content = content;
                     page_item = item;
@@ -590,7 +591,7 @@ function downloadContentImageObjects(item_content, itemId, done) {
     var encryptedImages = $(item_content).find(".bSafesImage");
 
     dbSetTotalCountersOfPage(itemId, 'ContentsImage', encryptedImages.length);
-    console.log('== (contents_image counts = )', encryptedImages.length);
+    console.log('  == (contents_image counts = )', encryptedImages.length);
 
     if (encryptedImages.length) {
         saveLog('   Content Image counts : ' + encryptedImages.length);
@@ -636,7 +637,7 @@ function downloadImageObject(item_content, itemId, index, done) {
                     if (evt.lengthComputable) {
                         var percentComplete = evt.loaded / evt.total * 100;
                         $(document.getElementById('progressBar' + id)).width(percentComplete + '%');
-                        console.log('== (contents_image)', index + 1, s3Key, percentComplete);
+                        console.log('  == (contents_image)', index + 1, s3Key, percentComplete);
                     }
                 }, false);
 
@@ -720,7 +721,7 @@ function downloadVideoObject(item_content, itemId, index, done) {
                     if (evt.lengthComputable) {
                         var percentComplete = evt.loaded / evt.total * 100;
 
-                        console.log('== (video)', index + 1, s3Key, percentComplete);
+                        console.log('  == (video)', index + 1, s3Key, percentComplete);
                         saveLog('  Video ' + (index + 1).toString() + ' downloading : ' + percentComplete + '%', s3Key);
                         $(document.getElementById('progressBar' + id)).width(percentComplete + '%');
                     }
@@ -780,14 +781,14 @@ function handleVideoObjects(item_content, itemId, done) {
     
 
     if (videoDownloads.length) {
-        console.log('== (video counts = )', videoDownloads.length);
+        console.log('  == (video counts = )', videoDownloads.length);
         saveLog('   Video counts : ' + videoDownloads.length);
 
         downloadVideoObject(item_content, itemId, currentContentVideo, function() {
             done();
         })
     } else {
-        console.log('== (video counts = )', 0);
+        console.log('  == (video counts = )', 0);
         done();
     }
 
@@ -824,7 +825,7 @@ function startDownloadingImages(item, done) {
                         var percentComplete = evt.loaded / evt.total * 100;
                         $downloadImage.find('.progress-bar').css('width', percentComplete + '%');
                         saveLog('  Image ' + (index + 1).toString() + ' downloading : ' + percentComplete + '%', s3Key);
-                        console.log('== (image)', index + 1, s3Key, percentComplete);
+                        console.log('  == (image)', index + 1, s3Key, percentComplete);
                         //console.log('****edi_image download' + s3Key + ':' + percentComplete);
                     }
                 }, false);
@@ -887,11 +888,11 @@ function startDownloadingImages(item, done) {
     if (isSkipImage) {
         done();
     } else if (item.images && item.images.length) {
-        console.log('== (image counts = )', item.images.length);
+        console.log('  == (image counts = )', item.images.length);
         saveLog('   Image counts : ' + item.images.length);
         downloadAnImage(doneDownloadingAnImage);
     } else {
-        console.log('== (image counts = )', 0);
+        console.log('  == (image counts = )', 0);
         done();
     }
     
@@ -998,7 +999,7 @@ var downloadAttachment = function(id, done) {
                         console.log('err_attachmentFileProgress');
                     }
                     //console.log('current / total = ', currentAttachmentChunkIndex + ' / ' + numberOfChunks);
-                    console.log('== (attachment, AttachIndex, chunkIndex, prog)', currentAttachmentIndex + 0, currentAttachmentChunkIndex, attachmentFileProgress);
+                    console.log('  == (attachment, AttachIndex, chunkIndex, prog)', currentAttachmentIndex + 0, currentAttachmentChunkIndex, attachmentFileProgress);
                     saveLog('  Attachment ' + (currentAttachmentIndex + 0).toString() + ' downloading : ' + attachmentFileProgress + '%', id);
                 }
             }, false);
@@ -1130,7 +1131,7 @@ function checkReadyAttachment(pageId)
     dbCheckReadyAttachment(pageId, function(err, isCompleted) {
         if ( (!err) && (isCompleted) ){
             // starting download attachments...
-            console.log('== (attachment counts = )', attachments.length-1);
+            console.log('  == (attachment counts = )', attachments.length-1);
             downloadAllAttachment(function(result) {
                 //dbSetTotalCountersOfPage(itemId, 'Attatchment', attachments.length - 1);
                 if (result) {
@@ -1138,6 +1139,7 @@ function checkReadyAttachment(pageId)
                 } else {
                     console.log('< ' + pageName + ' > finished.');            
                     saveLog('< ' + pageName + ' > finished.', '', 1);            
+                    saveLog('< ' + pageId + ' > finished.', '', 1);            
                     currentPage = null;    
                 }
                 
@@ -1151,8 +1153,10 @@ function checkIsCompletedThenSet(pageId)
     dbUpdatePageStatus(pageId, function(err, isCompleted) {
         if ( (!err) && (isCompleted) ){
             console.log('< ' + pageName + ' > finished.');            
-            saveLog('< ' + pageName + ' > finished.', '', 1);         
+            saveLog('< ' + pageName + ' > finished.', '', 1);     
+            saveLog('< ' + pageId + ' > finished.', '', 1);      
             currentPage = null;
+
             
         }
     });
@@ -1263,7 +1267,7 @@ function initContentView(contentFromeServer, done)
                 s3Key: s3Key
             }, function(data, textStatus, jQxhr) {
                 //console.log('call_preS3Download = ', data.status);
-                console.log('== (downloaded other type s3Key)');
+                console.log('  == (downloaded other type s3Key)');
                 saveLog('  downloaded type contents as s3object');
 
                 if (data.status === 'ok') {
@@ -1298,7 +1302,7 @@ function initContentView(contentFromeServer, done)
                             s3Key: s3Key
                         }, function(data, textStatus, jQxhr) {
                             //console.log('call_postS3Download = ', data.status);
-                            console.log('== (downloaded other type contents)');
+                            console.log('  == (downloaded other type contents)');
                             if (data.status === 'ok') {
                                 var item = data.item;
                                 var size = item.size;
