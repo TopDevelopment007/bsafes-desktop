@@ -1188,8 +1188,8 @@ function checkIsCompletedThenSet(pageId)
             saveLog('< ' + pageId + ' > finished.', '', 1);      
             currentPage = null;           
         } else {
-        	console.log('< ' + pageName + ' >  something is wrong.'); 
-        	console.log('row = ', row);
+        	//console.log('< ' + pageName + ' >  something is wrong.'); 
+        	//console.log('row = ', row);
         	//setTimeout(checkIsCompletedThenSet, 200);
         }
     });
