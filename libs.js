@@ -153,6 +153,8 @@ function showErrorMessage(jqXHR)
         msg = 'internet connection broke';
     } else if(jqXHR.status==500) { // internal server error
     	msg = 'internal server error';
+    } else if(jqXHR.status==502) { // bad gateway
+    	msg = 'Bad Gateway';
     } else {
     	msg = 'unknow error';
     }

@@ -126,6 +126,16 @@ function processErrors(jqXHR)
         ipcRenderer.send( "showErrDialong", null );
     } else if(jqXHR.status==500) { // internal server error
         msg = 'internal server error';
+        stoppedPage = currentPage;
+        saveLog('Ooh, Internal Server error.', '', 0);
+        ipcRenderer.send( "setDownloadStatus", true );
+        ipcRenderer.send( "showErrDialong", null );
+    } else if(jqXHR.status==502) { // bad gateway
+        msg = 'internal server error';
+        stoppedPage = currentPage;
+        saveLog('Ooh, Bad Gateway.', '', 0);
+        ipcRenderer.send( "setDownloadStatus", true );
+        ipcRenderer.send( "showErrDialong", null );
     } else if(jqXHR.status==400) { // bad request...
         msg = 'bad request';
         currentPage = null;
