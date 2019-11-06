@@ -801,7 +801,8 @@ function downloadVideoObject(item_content, itemId, index, done) {
                     //console.log('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
                     console.log('** (err_preS3Download_video)', signedURL);
                     saveLog('  Ooh, Errors occured');
-                    if (isDownloaded) processErrors(null);
+                    done();
+                    //if (isDownloaded) processErrors(null);
                 };
 
                 xhr.send();
@@ -1341,6 +1342,7 @@ function initContentView(contentFromeServer, done)
                         //alert('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
                         console.log('Ooh, please retry! Error occurred when connecing the url : ', signedURL);
                         saveLog('  Ooh, Error occured');
+                        done();
                     };
 
                     xhr.onreadystatechange = function() {
