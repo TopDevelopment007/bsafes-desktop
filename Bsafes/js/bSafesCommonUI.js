@@ -1525,9 +1525,13 @@ function processErrorsInSelecting(jqXHR)
     } else {
         msg = 'unknow error';
     }
-    console.log(msg);
-    hideDownloadLoadingIn();
-    alert(mgs);
+
+    if (jqXHR.status != 200) {
+      console.log(jqXHR.status + msg);
+      hideDownloadLoadingIn();
+      alert(msg);  
+    }
+    
 }
 
 function downloadSelectedItems(selectedItems)
