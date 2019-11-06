@@ -76,6 +76,7 @@ function interval()
 
     if (isStopped) {
         console.log('__ (status) stopped...');
+        setTimeout(interval, 300);
     } else {
         console.log('__ (status) running...');    
 
@@ -128,11 +129,12 @@ function processErrors(jqXHR)
     } else if(jqXHR.status==400) { // bad request...
         msg = 'bad request';
         currentPage = null;
-	    interval();
+	    //interval();
     } else {
         msg = 'unknow error';
     }
     console.log(msg);
+    interval();
 }
 
 function downloadPage(pageId) 
@@ -917,7 +919,10 @@ function startDownloadingImages(item, done) {
                 xhr.send();
 
             }
-        }, 'json');
+        }, 'json')
+        .fail(function(jqXHR, textStatus, errorThrown){
+            processErrors(jqXHR);
+        });
 
     }
 
@@ -1020,7 +1025,7 @@ var downloadAttachment = function(id, done) {
             
             xhr.open('GET', signedURL, true);
             xhr.responseType = 'arraybuffer';
-            console.log('signedURL = ', signedURL);
+            //console.log('signedURL = ', signedURL);
 
             var attachmentFileProgress = 0;
             var previousProgress = 0;
