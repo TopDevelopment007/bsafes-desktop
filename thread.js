@@ -161,8 +161,10 @@ function downloadPage(pageId)
                 if (err) {
                     //alert(err);
                     console.info('!!!_err_getPageItem (pageId = )', pageId);
+                    saveLog('  Ooh, Errors occured, but go on.');
                     dbUpdatePageStatusWithError(pageId);
                     currentPage = null;
+                    interval();
                 } else {
                     console.info('!!!_complete_getPageItem (pageId = )', pageId);                    
 
@@ -275,7 +277,12 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                 dbInsertDownloadList(itemContainer);
 
                 function decryptItem(envelopeKey, fn) {
-                    //console.log('decryptItem', thisItemId);
+                    if((item.keyEnvelope === undefined) || (item.envelopeIV === undefined) || (item.ivEnvelope === undefined) || (item.ivEnvelopeIV === undefined)) {
+						//getAndShowPath(itemId, envelopeKey, teamName, "");
+						//dbUpdatePageStatusWithError(itemId);
+						done("Error: undefined item key");
+						return;
+					}
                     itemKey = decryptBinaryString(item.keyEnvelope, envelopeKey, item.envelopeIV);
                     itemIV = decryptBinaryString(item.ivEnvelope, envelopeKey, item.ivEnvelopeIV);
                     itemTags = [];

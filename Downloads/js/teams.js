@@ -21,7 +21,7 @@ function loadPage(){
 
 	var selectedTeams = [];
 
-
+  $('.btnLog').addClass('hidden');
 
   $('.btnLog').click(function(e) {
       $(e.target).trigger('blur');
@@ -165,6 +165,8 @@ function loadPage(){
 		for ( var i=0; i < teams.length; i++) {
 			displayATeam();
 		}
+    //console.log('ok');
+    $('.btnLog').removeClass('hidden');
 	}
 
   function resetPagination() {
