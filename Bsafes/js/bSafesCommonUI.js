@@ -1495,6 +1495,41 @@ function positionItemNavigationControls() {
 
 var expandedKey;
 var totalNumber = 0;
+
+function processErrorsInSelecting(jqXHR)
+{
+    var msg;
+
+    if(jqXHR == null || jqXHR.status==0) { // internet connection broke  
+        msg = 'internet connection broken.';        
+        stoppedPage = currentPage;
+        //saveLog('Ooh, Internet connection has broken.', '', 0);
+        ipcRenderer.send( "setDownloadStatus", true );
+        ipcRenderer.send( "showErrDialong", null );
+    } else if(jqXHR.status==500) { // internal server error
+        msg = 'internal server error';
+        stoppedPage = currentPage;
+        //saveLog('Ooh, Internal Server error.', '', 0);
+        ipcRenderer.send( "setDownloadStatus", true );
+        ipcRenderer.send( "showErrDialong", null );
+    } else if(jqXHR.status==502) { // bad gateway
+        msg = 'internal server error';
+        stoppedPage = currentPage;
+        //saveLog('Ooh, Bad Gateway.', '', 0);
+        ipcRenderer.send( "setDownloadStatus", true );
+        ipcRenderer.send( "showErrDialong", null );
+    } else if(jqXHR.status==400) { // bad request...
+        msg = 'bad request';
+        currentPage = null;
+      //interval();
+    } else {
+        msg = 'unknow error';
+    }
+    console.log(msg);
+    hideDownloadLoadingIn();
+    alert(mgs);
+}
+
 function downloadSelectedItems(selectedItems)
 {
   dbAddDownloadsItemsInLogs(selectedItems);
@@ -1603,7 +1638,10 @@ async function getTeamDataInTeams(teamId) {
         //console.log('err:(getTeamDataInTeams)', data.err);
       }
       resolve();
-    }, 'json');
+    }, 'json')
+    .fail(function(jqXHR, textStatus, errorThrown){
+        processErrorsInSelecting(jqXHR);
+    });
 
   });
 }
@@ -1629,7 +1667,10 @@ async function getContainerData(itemId) {
           console.log('err:(getItemData)', data.err);
         }
         resolve(teamIdOfItem);
-      }, 'json');
+      }, 'json')
+    .fail(function(jqXHR, textStatus, errorThrown){
+        processErrorsInSelecting(jqXHR);
+    });
   });
 }
 
@@ -1682,7 +1723,10 @@ function downloadListAndPage(itemId, fn) {
             callback_fn(data.hits.hits);
           }
         }
-    }, 'json');
+    }, 'json')
+    .fail(function(jqXHR, textStatus, errorThrown){
+        processErrorsInSelecting(jqXHR);
+    });
 
   }
 };
@@ -1728,7 +1772,10 @@ async function setContainerAndTeamOfPage(pageId)
          }
          resolve();
        }
-    );
+    )
+    .fail(function(jqXHR, textStatus, errorThrown){
+        processErrorsInSelecting(jqXHR);
+    });
   });
 }
 
@@ -1744,7 +1791,10 @@ async function getItemPath(itemId)
         console.log('error_getItemPath', itemId);
       }
       resolve();
-    }, 'json');
+    }, 'json')
+    .fail(function(jqXHR, textStatus, errorThrown){
+        processErrorsInSelecting(jqXHR);
+    });
   });
 }
 
