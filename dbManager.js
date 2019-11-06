@@ -267,6 +267,7 @@ function dbUpdatePageStatus(pageId, done)
 						db.run("UPDATE " + table + " SET isDownload = 1 WHERE id = ?", row.id);	
 						isCompleted = true;
 					} else {
+						
 					}	
 				} else {	
 					console.log('pageId = ', pageId);
@@ -274,6 +275,7 @@ function dbUpdatePageStatus(pageId, done)
 					console.log('counterVideos', row.downloadedVideos, row.counterVideos);
 					console.log('counterImages', row.downloadedImages, row.counterImages);
 					console.log('counterAttatchments', row.downloadedAttatchments, row.counterAttatchments);
+					console.log('counterAttatchments', row.downloadedOtherTypesContents, row.counterOtherTypesContents);
 				}
 			}
 			

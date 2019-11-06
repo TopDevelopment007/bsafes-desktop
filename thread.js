@@ -72,69 +72,45 @@ init();
 
 function interval()
 {
-    // if (require('electron').remote == undefined) {
-    //     return;
-    // }
-
-    // if (db == null) {
-    //     db = require('electron').remote.getGlobal('sqliteDB');
-    //     setSQLiteDB(db);
-        
-    // }
-    
-    // console.log('____ (arrPageCounts)', arrPage.length);
-    // console.log('____ (currentPage)', currentPage);
-    // console.log('____ (currentPageName)', pageName);
-    // console.log('____ (stoppedPage)', stoppedPage);
-
     var isStopped = require('electron').remote.getGlobal('isStopped');
 
     if (isStopped) {
         console.log('__ (status) stopped...');
-        return;
     } else {
-        console.log('__ (status) running...');
+        console.log('__ (status) running...');    
+
+	    if (stoppedPage) {
+	        console.log('resume the stoppedPage...');
+	        currentPage = stoppedPage;
+	        stoppedPage = null;
+	        downloadPage(currentPage);
+
+	    } else if (currentPage == null) {
+
+	        dbGetDownloadsListFromPages(function(arrPageList){
+	            arrPage = arrPageList;
+	            if (arrPageList.length == 0) {
+	                saveLog( 'completed', '', 1 );
+	                setTimeout(interval, 1000);                
+	            } else {
+	            	currentPage = arrPageList[0];   
+		            console.log('======currentPage', currentPage);   
+
+		      		isSkipGetItem = false;
+		            isSkipContent = false;
+		            isSkipContentImage = false;
+					isSkipContentVideo = false;
+		            isSkipImage = false;
+		            isSkipAttach = false;
+		            downloadPage(currentPage);
+	            }
+	        });
+	    } else {
+	    	//console.log('** waiting_currentPage = ', currentPage);
+	    	//checkIsCompletedThenSet(currentPage);
+	    }
     }
-
-    if (stoppedPage) {
-        console.log('resume the stoppedPage...');
-        currentPage = stoppedPage;
-        stoppedPage = null;
-        downloadPage(currentPage);
-
-    } else if (currentPage == null) {
-
-        dbGetDownloadsListFromPages(function(arrPageList){
-            arrPage = arrPageList;
-            if (arrPageList.length == 0) {
-                saveLog( 'completed', '', 1 );
-                return;                
-            }
-
-            currentPage = arrPageList[0];   
-            console.log('======currentPage', currentPage);   
-
-      		isSkipGetItem = false;
-            isSkipContent = false;
-            isSkipContentImage = false;
-			isSkipContentVideo = false;
-            isSkipImage = false;
-            isSkipAttach = false;
-            downloadPage(currentPage);
-
-        });
-    } else {
-    	checkIsCompletedThenSet(currentPage);
-    }
-    // else {
-    //     dbUpdatePageStatus(currentPage, function(err, isCompleted) {
-    //         if (isCompleted) {
-    //             currentPage = null;
-    //             return;
-    //         } 
-    //     });
-    // }
-    setTimeout(interval, 200);
+    // setTimeout(interval, 200);
 }
 
 function processErrors(jqXHR)
@@ -149,6 +125,10 @@ function processErrors(jqXHR)
         ipcRenderer.send( "showErrDialong", null );
     } else if(jqXHR.status==500) { // internal server error
         msg = 'internal server error';
+    } else if(jqXHR.status==400) { // bad request...
+        msg = 'bad request';
+        currentPage = null;
+	    interval();
     } else {
         msg = 'unknow error';
     }
@@ -179,7 +159,15 @@ function downloadPage(pageId)
                     	if (currentPage) {
                     		dbCheckPageTotalCounters(itemId, function(isReady) {
 	                            if (isReady) {
-	                                //checkIsCompletedThenSet(pageId);
+	                                checkIsCompletedThenSet(pageId, function(isCompleted) {
+	                                	if (isCompleted) {
+	                                		currentPage = null;
+	                                		interval();
+	                                	} else {
+	                                		setTimeout(waitForPageSettingTotalCounters, 200, itemId );
+	                                	}
+	                                	
+	                                });
 	                            } else {
 	                                setTimeout(waitForPageSettingTotalCounters, 200, itemId );
 	                            }
@@ -456,7 +444,7 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                     $('.navbarTeamName').text("Yours");
                     decryptItem(expandedKey, done);
                     getPageComments();
-                    done(null, item);
+                    //done(null, item);
                 } else {
                     isATeamItem = true;
                     var itemSpaceParts = itemSpace.split(':');
@@ -490,7 +478,7 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
 
                             decryptItem(teamKey, done);
                             getPageComments();
-                            done(null, item);
+                            //done(null, item);
                         }
                     });
                 }
@@ -704,13 +692,15 @@ function downloadImageObject(item_content, itemId, index, done) {
                         fs.write(fd, new Buffer(buffer), 0, buffer.length, null, (err) => {
                             if (err) throw 'error writing file: ' + err;
                             dbInsertPageContentsFiles(server_addr + '/memberAPI/preS3Download', itemId, s3Key, file_name);
-                            updatePageStatus(itemId, 'ContentsImage');
+                            //updatePageStatus(itemId, 'ContentsImage');
                             fs.close(fd, function() {
                                 //console.log('wrote the ContentsImage file successfully');
                                 saveLog('  Content Image ' + (index + 1).toString() + ' downloaded');
                                 index = index + 1;
                                 currentContentImage = index;
-                                downloadImageObject(item_content, itemId, index, done)
+                                updatePageStatus(itemId, 'ContentsImage', function() {
+                                	downloadImageObject(item_content, itemId, index, done);
+                                });
 
                             });
                         });
@@ -789,12 +779,13 @@ function downloadVideoObject(item_content, itemId, index, done) {
                             if (err) throw 'error writing file: ' + err;
                             //dbInsertPageAttatchment(server_addr + '/memberAPI/preS3ChunkDownload', itemId, current_chunkIndex, id, data='', file_name);
                             dbInsertPageVideo(server_addr + '/memberAPI/preS3Download', itemId, s3Key, data='', file_name);
-                            updatePageStatus(itemId, 'Video');
+                            // updatePageStatus(itemId, 'Video');
                             fs.close(fd, function() {
                                 saveLog('  Content Video ' + (currentContentVideo + 1).toString() + ' downloaded');
                                 //index = index + 1;
                                 //currentContentVideo = index;
-                                done();
+                                updatePageStatus(itemId, 'Video', done);
+                                //done();
                                 //console.log('wrote the Video file successfully');
                             });
                         });
@@ -905,14 +896,14 @@ function startDownloadingImages(item, done) {
                         fs.write(fd, new Buffer(buffer), 0, buffer.length, null, (err) => {
                             if (err) throw 'error writing file: ' + err;
                             dbInsertPageIamge(server_addr + '/memberAPI/preS3Download', itemId, s3Key, data = '', file_name);
-                            updatePageStatus(itemId, 'Image');
+                            // updatePageStatus(itemId, 'Image');
                             fs.close(fd, function() {
                                 //console.log('wrote the Image file successfully');
+                                updatePageStatus(itemId, 'Image', done);
+                                // done(null);
                             });
                         });
                     });
-
-                    done(null);
 
                 }
 
@@ -951,7 +942,7 @@ function startDownloadingImages(item, done) {
     } else if (item.images && item.images.length) {
         downloadAnImage(doneDownloadingAnImage);
     } else {
-        console.log('  == (image counts = )', 0);
+        //console.log('  == (image counts = )', 0);
         done();
     }
     
@@ -1094,8 +1085,8 @@ var downloadAttachment = function(id, done) {
                     downloadDecryptAndAssemble();
                 } else {
                     dbInsertPageAttatchment(server_addr + '/memberAPI/preS3ChunkDownload', itemId, current_chunkIndex, id, data='', file_name);
-                    updatePageStatus(itemId, 'Attatchment');
-                    done();
+                    updatePageStatus(itemId, 'Attatchment', done);
+                    // done();
                 }
                         
             }
@@ -1172,26 +1163,31 @@ function startDownloadResourceFiles(content, item, fn)
     });
 }
 
-function updatePageStatus(pageId, field)
+function updatePageStatus(pageId, field, done)
 {
     dbIncreaseDownloadedCountersOfPage(pageId, field, function(){  
+    	done();
     });
 }
 
 
-function checkIsCompletedThenSet(pageId)
+function checkIsCompletedThenSet(pageId, done)
 {
     dbUpdatePageStatus(pageId, function(err, isCompleted, row) {
+    	var isFinished;
         if ( (!err) && (isCompleted) ){
             console.log('< ' + pageName + ' > finished.');            
             saveLog('< ' + pageName + ' > finished.', '', 1);     
             saveLog('< ' + pageId + ' > finished.', '', 1);      
             currentPage = null;           
+            isFinished = true;
         } else {
-        	//console.log('< ' + pageName + ' >  something is wrong.'); 
-        	//console.log('row = ', row);
+        	isFinished = false;
+        	console.log('< ' + pageName + ' >  something is wrong.'); 
+        	console.log('row = ', row);
         	//setTimeout(checkIsCompletedThenSet, 200);
         }
+        done(isFinished);
     });
 }
 
@@ -1323,8 +1319,8 @@ function initContentView(contentFromeServer, done)
                             fs.write(fd, new Buffer(buffer), 0, buffer.length, null, (err) => {
                                 if (err) throw 'error writing file: ' + err;
                                 dbInsertPageOtherTypesContentFiles(server_addr + '/memberAPI/preS3Download', itemId, s3Key, file_name);
-                                updatePageStatus(itemId, 'OtherTypesContent');
-                                done();
+                                updatePageStatus(itemId, 'OtherTypesContent', done);
+                                //done();
                                 fs.close(fd, function() {
                                     //console.log('wrote the ContentsImage file successfully');
                                 });
@@ -1344,11 +1340,13 @@ function initContentView(contentFromeServer, done)
 
                     xhr.onreadystatechange = function() {
                         if (xhr.status == 400) { // bad request
+                            console.log('Ooh, bad data! It is bad URL request : \n', signedURL);
                             dbUpdatePageStatusWithError(itemId);
+                            //processErrors(xhr);
                             xhr.abort();
-                            //console.log('Ooh, bad data! It is bad URL request : \n', signedURL);
-                        } else {
-                            //alert('Ooh, bad data! It occurred when requesting : \n', signedURL);
+                            done();
+                        } else if (xhr.status != 200) { 
+                            console.log('Ooh, bad data! It occurred when requesting : \n', xhr.status, signedURL);
                         }
                     };
 
@@ -1357,6 +1355,7 @@ function initContentView(contentFromeServer, done)
 
                 } else {
                     dbUpdatePageStatusWithError(itemId);
+                    done();
                 }
             }, 'json')
             .fail(function(jqXHR, textStatus, errorThrown){
