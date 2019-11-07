@@ -133,7 +133,7 @@ function loadPage(){
 		}
     //console.log('ok');
     $('.btnLog').removeClass('hidden');
-    intervalObj();
+    
 	}
 
   function resetPagination() {
@@ -197,73 +197,67 @@ function loadPage(){
 
   //var arrLogItems = [];
 
+  const intervalSetStatus = setInterval(() => {
+    var isStopped = require('electron').remote.getGlobal('isStopped');
+    if (isStopped) {
+      $('.resumeBtn').removeClass('hidden');
+      $('.stopBtn').addClass('hidden');
+      
+    } else {
+      $('.stopBtn').removeClass('hidden');
+      $('.resumeBtn').addClass('hidden');
+    }
+  }, 1000);
+
+  intervalObj();
+
   function intervalObj()  
   {
-    //console.log('interviewing the interval');
-    // if (arrLogItems.length) {
-    //   return;
-    // }
     
     arrLogItems = $('.resultItem');
 
     function getItemStatus() {
-      // if (arrLogItems.length == 0) {
-      //   return;
-      // }
+      if (arrLogItems.length) {
+        var itemId = $(arrLogItems[0]).attr('id');
+        var $item = $(arrLogItems[0]);
+        //console.log('itemId', itemId);
+        dbGetDownloadedCountInItem(itemId, function(err, total, downloaded, errors) {
+          if (err) {
+            console.log('err: dbGetDownloadedCountInItem', err);
+          } else {
+            var status = '';
+            var remains = total - downloaded - errors;
 
-      var isStopped = require('electron').remote.getGlobal('isStopped');
-      if (isStopped) {
-        $('.resumeBtn').removeClass('hidden');
-        $('.stopBtn').addClass('hidden');
-        
+            if (errors) {
+              status = 'Downloaded : ' + downloaded + ', Errors : ' + errors + ' / Total : ' + total;
+            } else {
+              status = 'Downloaded : ' + downloaded + ' / Total : ' + total;
+            }
+
+            $item.find('.itemStatus').html(status); 
+            if (remains == 0) {
+              $item.find('.itemStatus').addClass('text-success');
+              //$item.find('.progress-bar').addClass('hidden');
+              $item.find('.progress-bar').remove();
+              $item.find('.btn-group-status').remove();
+
+            } else {
+              var percent = (downloaded + errors) * 100 / total;
+              $item.find('.progress-bar').attr('aria-valuenow', percent);
+              $item.find('.progress-bar').css({'width':percent+'%'});
+            }
+            arrLogItems.splice( 0, 1 );   
+            getItemStatus();   
+            //setTimeout(getItemStatus, 300);
+          }
+        });
       } else {
-        $('.stopBtn').removeClass('hidden');
-        $('.resumeBtn').addClass('hidden');
+        setTimeout(intervalObj, 1000);
       }
-
-      var itemId = $(arrLogItems[i]).attr('id');
-      var $item = $(arrLogItems[i]);
-      //console.log('itemId', itemId);
-      dbGetDownloadedCountInItem(itemId, function(err, total, downloaded, errors) {
-        if (err) {
-          console.log('err: dbGetDownloadedCountInItem', err);
-        } else {
-          var status = '';
-          var remains = total - downloaded - errors;
-
-          if (errors) {
-            status = 'Downloaded : ' + downloaded + ', Errors : ' + errors + ' / Total : ' + total;
-          } else {
-            status = 'Downloaded : ' + downloaded + ' / Total : ' + total;
-          }
-
-          $item.find('.itemStatus').html(status); 
-          if (remains == 0) {
-            $item.find('.itemStatus').addClass('text-success');
-            //$item.find('.progress-bar').addClass('hidden');
-            $item.find('.progress-bar').remove();
-            $item.find('.btn-group-status').remove();
-
-          } else {
-            var percent = (downloaded + errors) * 100 / total;
-            $item.find('.progress-bar').attr('aria-valuenow', percent);
-            $item.find('.progress-bar').css({'width':percent+'%'});
-          }
-          arrLogItems.splice( 0, 1 );   
-          //getItemStatus();   
-          //setTimeout(getItemStatus, 300);
-        }
-      });
+      
     }
 
-    for (var i=0; i<arrLogItems.length; i++) {
-      getItemStatus();
-    }
-
-    setTimeout(intervalObj, 1000);
+    getItemStatus();
    
   }
-
-
-  
 };
