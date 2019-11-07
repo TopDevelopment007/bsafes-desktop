@@ -175,7 +175,7 @@ function showErrorMessage(jqXHR)
 
 }
 $('.btnBSafes').click(function(e) {
-
+	e.preventDefault();
 	ipcRenderer.send( "setNavigateFolder", 'bsafes' );
 
 	var last_url = localStorage.getItem('bsafes_last_url');
@@ -187,7 +187,7 @@ $('.btnBSafes').click(function(e) {
 })
 
 $('.btnLocal').click(function(e) {
-
+	e.preventDefault();
 	ipcRenderer.send( "setNavigateFolder", 'local' );
 
 	var last_url = localStorage.getItem('local_last_url');
@@ -199,14 +199,16 @@ $('.btnLocal').click(function(e) {
 })
 
 $('.btnDownloads').click(function(e) {
-	
+	e.preventDefault();
 	ipcRenderer.send( "setNavigateFolder", 'download' );
-
 	navigateView('../../Downloads/views/downloads.ejs');
+	console.log('downloads');
 })
 
-$('.btnTools').click(function(e) {	
+$('.btnTools').off().click(function(e) {	
+	e.preventDefault();
 	ipcRenderer.send( "toggleThreadView", null );
 	console.log('toggled');
+	return false;
 })
 

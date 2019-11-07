@@ -15,7 +15,7 @@ var download_folder_path = 'bsafes_downloads/';
 // be closed automatically when the JavaScript object is garbage collected.
 let win;
 let thread_win;
-var isThreadview = false;
+var isThreadview;
 
 global.sqliteDB = db;
 global.loginUserId = loginUserId;
@@ -25,7 +25,6 @@ global.navigateFolder = 'bsafes';
 global.isStopped = false;
 global.isSelectDown = false;
 global.logModal = '';
-
 
 
 function createWindow () {
@@ -77,13 +76,14 @@ function createWindow () {
     slashes: true
   }))
   thread_win.webContents.openDevTools();
-  
+  isThreadview = false;
+  thread_win.hide();
   if (global.isDev) {    
     // Open the DevTools.
     win.webContents.openDevTools();
   } else {
     win.setMenu(null);
-    thread_win.hide();
+    // thread_win.hide();
   }
 
 }
@@ -263,13 +263,13 @@ ipcMain.on( "showDialong", ( event, msg ) => {
 } );
 
 ipcMain.on( "toggleThreadView", ( event, myGlobalVariableValue ) => {
+  isThreadview = !isThreadview;
   if (isThreadview) {
     thread_win.show();
   } else {
     thread_win.hide();
   }
-  isThreadview = !isThreadview;
-  console.log('isThreadview = ', isThreadview);
+  // console.log('isThreadview = ', isThreadview);
 });
 
 ipcMain.on( "selectDownload", ( event, myGlobalVariableValue ) => {
