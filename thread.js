@@ -90,10 +90,9 @@ function interval()
 
 	        dbGetDownloadsListFromPages(function(arrPageList){
 	            arrPage = arrPageList;
-	            if (arrPageList.length == 0) {
-	                saveLog( 'completed', '', 1 );
-	                setTimeout(interval, 1000);                
-	            } else {
+
+	            if (arrPageList.length > 0) {
+	            	ipcRenderer.send( "selectDownload", true );
 	            	currentPage = arrPageList[0];   
 		            console.log('======currentPage', currentPage);   
 
@@ -104,7 +103,18 @@ function interval()
 		            isSkipImage = false;
 		            isSkipAttach = false;
 		            downloadPage(currentPage);
-	            }
+	            } else {
+	            	if (require('electron').remote.getGlobal('isSelectDown')) {
+		                saveLog( 'completed', '', 1 );
+		                var msg = {};
+		                msg.msg = 'Complete to downloading items.';  
+	        			msg.type = 'info';   
+		                ipcRenderer.send( "showDialong", msg );
+		                ipcRenderer.send( "selectDownload", false );
+		                
+		            }
+		            setTimeout(interval, 1000);
+	            } 
 	        });
 	    } else {
 	    	//console.log('** waiting_currentPage = ', currentPage);
@@ -116,34 +126,39 @@ function interval()
 
 function processErrors(jqXHR)
 {
-    var msg;
+    var msg = {};
 
     if(jqXHR == null || jqXHR.status==0) { // internet connection broke  
-        msg = 'internet connection broken.';        
+        msg.msg = 'Ohh, Network connection has broken. Please Check it out.';  
+        msg.type = 'error';      
         stoppedPage = currentPage;
         saveLog('Ooh, Internet connection has broken.', '', 0);
         ipcRenderer.send( "setDownloadStatus", true );
-        ipcRenderer.send( "showErrDialong", null );
+        ipcRenderer.send( "showDialong", msg );
     } else if(jqXHR.status==500) { // internal server error
-        msg = 'internal server error';
+        msg.msg = 'Ohh, Internal server error occurred. Please Check it out.';
+        msg.type = 'error';      
         stoppedPage = currentPage;
         saveLog('Ooh, Internal Server error.', '', 0);
         ipcRenderer.send( "setDownloadStatus", true );
-        ipcRenderer.send( "showErrDialong", null );
+        ipcRenderer.send( "showDialong", msg );
     } else if(jqXHR.status==502) { // bad gateway
-        msg = 'internal server error';
+        msg.msg = 'Ohh, Server is Bad gatewy. Please Check it out.';
+        msg.type = 'error';      
         stoppedPage = currentPage;
         saveLog('Ooh, Bad Gateway.', '', 0);
         ipcRenderer.send( "setDownloadStatus", true );
-        ipcRenderer.send( "showErrDialong", null );
+        ipcRenderer.send( "showDialong", msg );
     } else if(jqXHR.status==400) { // bad request...
-        msg = 'bad request';
+        msg.msg = 'bad request';
+        msg.type = 'error';      
         currentPage = null;
 	    //interval();
     } else {
-        msg = 'unknow error';
+        msg.msg = 'unknow error';
+        msg.type = 'error';      
     }
-    console.log(msg);
+    console.log(jqXHR.status, msg);
     interval();
 }
 

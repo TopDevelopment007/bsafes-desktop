@@ -1498,38 +1498,43 @@ var totalNumber = 0;
 
 function processErrorsInSelecting(jqXHR)
 {
-    var msg;
+    var msg = {};
 
     if(jqXHR == null || jqXHR.status==0) { // internet connection broke  
-        msg = 'internet connection broken.';        
+        msg.msg = 'Ohh, Network connection has broken. Please Check it out.';   
+        msg.type = 'error';           
         stoppedPage = currentPage;
         //saveLog('Ooh, Internet connection has broken.', '', 0);
         ipcRenderer.send( "setDownloadStatus", true );
-        ipcRenderer.send( "showErrDialong", null );
+        ipcRenderer.send( "showDialong", msg );
     } else if(jqXHR.status==500) { // internal server error
-        msg = 'internal server error';
+        msg.msg = 'Ohh, Internal server error occurred. Please Check it out.';
+        msg.type = 'error';      
         stoppedPage = currentPage;
         //saveLog('Ooh, Internal Server error.', '', 0);
         ipcRenderer.send( "setDownloadStatus", true );
-        ipcRenderer.send( "showErrDialong", null );
+        ipcRenderer.send( "showDialong", msg );
     } else if(jqXHR.status==502) { // bad gateway
-        msg = 'internal server error';
+        msg.msg = 'Ohh, Server is Bad gatewy. Please Check it out.';
+        msg.type = 'error';      
         stoppedPage = currentPage;
         //saveLog('Ooh, Bad Gateway.', '', 0);
         ipcRenderer.send( "setDownloadStatus", true );
-        ipcRenderer.send( "showErrDialong", null );
+        ipcRenderer.send( "showDialong", msg );
     } else if(jqXHR.status==400) { // bad request...
-        msg = 'bad request';
+        msg.msg = 'bad request';
+        msg.type = 'error';      
         currentPage = null;
       //interval();
     } else {
-        msg = 'unknow error';
+        msg.msg = 'unknow error';
+        msg.type = 'error';      
     }
 
     if (jqXHR.status != 200) {
-      console.log(jqXHR.status + msg);
+      console.log(jqXHR.status, msg);
       hideDownloadLoadingIn();
-      alert(msg);  
+      //alert(msg);  
     }
     
 }
@@ -1540,22 +1545,13 @@ function downloadSelectedItems(selectedItems)
 
   var ipcRenderer = require( "electron" ).ipcRenderer;
   ipcRenderer.send( "clearDownloadLogs", null );
+  
 
   var arrList = [];
   for(var i=0; i<selectedItems.length; i++) {
     arrList.push(selectedItems[i].id);
   }
   
-  // dbQueryInfo(server_addr + '/memberAPI/preflight', {
-  //   sessionResetRequired: false
-  // }, function(data, textStatus, jQxhr ){
-  //   if(data.status === 'ok'){
-  //     expandedKey = data.expandedKey;
-  //     downloadItemByItemID(arrList, function() {
-  //         hideDownloadLoadingIn();
-  //     });
-  //   }
-  // }, 'json');
   totalNumber = 0;
   $('.remainNumber').html('0');
   $('.totalNumber').html('0');

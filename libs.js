@@ -16,7 +16,18 @@ function makeCallNavigate(link)
 
 function navigateView(goto_view)
 {
-	var view = goto_view;
+	// extract Get Params.
+	var view_url = goto_view;
+	view_url = view_url.split('?');
+	view_url.forEach(function(element) {
+		element = element.split('=');
+		ejse.data(element[0], element[1]);
+		console.log(element);
+	});
+
+	// var view = goto_view;
+	var view = view_url[0];
+
 	const remote = require ("electron").remote;
 	//const app = require('electron').remote.app
 	const url = require('url');

@@ -22,6 +22,7 @@ global.logMesage = [];
 global.isDev = true;
 global.navigateFolder = 'bsafes';
 global.isStopped = false;
+global.isSelectDown = false;
 global.logModal = '';
 
 
@@ -243,13 +244,13 @@ ipcMain.on( "setNavigateFolder", ( event, myGlobalVariableValue ) => {
   global.navigateFolder = myGlobalVariableValue;
 } );
 
-ipcMain.on( "showErrDialong", ( event, myGlobalVariableValue ) => {
+ipcMain.on( "showDialong", ( event, msg ) => {
 	const err_dlg_options = {
-	  type: 'error',
+	  type: msg.type ,
 	  buttons: ['Ok'],
 	  defaultId: 2,
-	  title: 'Error!',
-	  message: 'Ohh, Network connection has broken. Please Check it out.',
+	  title: msg.type.toUpperCase(),
+	  message: msg.msg,
 	  detail: '',
 	};
 
@@ -259,3 +260,7 @@ ipcMain.on( "showErrDialong", ( event, myGlobalVariableValue ) => {
 	});
   
 } );
+
+ipcMain.on( "selectDownload", ( event, myGlobalVariableValue ) => {
+  global.isSelectDown = myGlobalVariableValue;
+});

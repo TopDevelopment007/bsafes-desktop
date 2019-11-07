@@ -61,7 +61,7 @@ function navigateView_old(view)
 		case 'box.ejs' :
 		case 'notebook.ejs' :
 		case 'diary.ejs' :
-			ejse.data('initialDisplay', 'contents')
+			//ejse.data('initialDisplay', 'contents')
 		case 'page.ejs' :
 		case 'notebookPage.ejs' :		
 		case 'folderPage.ejs' :	

@@ -213,7 +213,7 @@ function loadPage(){
 		showLoading();
 		$('.resultItems').empty();
 
-		dbGetDownloadsItemsFromLogs( {from : pageNumber-1, size: itemsPerPage}, function(data) {
+		dbGetDownloadsItemsFromLogs( {from : (pageNumber-1)*itemsPerPage, size: itemsPerPage}, function(data) {
 			if(data.status === 'ok') {
         currentContentsPage = pageNumber;
 				var total = data.hits.total;

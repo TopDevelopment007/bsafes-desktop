@@ -680,9 +680,11 @@ function dbGetDownloadsItemsFromLogs(postData, fn)
 		}
 	});
 
-	sql = "SELECT id, itemName, itemID, position, status, total, downloaded, logTime FROM " + table + " ORDER BY id DESC LIMIT ?, ?";
-	
-	db.all(sql, [postData.from, postData.size], function(err, rows) {
+	//sql = "SELECT id, itemName, itemID, position, status, total, downloaded, logTime FROM " + table + " ORDER BY id DESC LIMIT ?, ?";
+	sql = "SELECT id, itemName, itemID, position, status, total, downloaded, logTime FROM " + table + " ORDER BY id DESC LIMIT ? OFFSET ?";
+	console.log('postData.size, postData.from = ', postData.size, postData.from);
+	//db.all(sql, [postData.from, postData.size], function(err, rows) {
+	db.all(sql, [postData.size, postData.from], function(err, rows) {
 		if (err) {
 			console.log(err)
 		} else {
