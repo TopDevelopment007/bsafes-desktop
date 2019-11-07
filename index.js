@@ -10,11 +10,12 @@ var loginUserId;
 var arrDownloadQueue = [];
 //var threads = require('./thread.js');
 var download_folder_path = 'bsafes_downloads/';
-
+//var thread_win;
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let win;
 let thread_win;
+var isThreadview = false;
 
 global.sqliteDB = db;
 global.loginUserId = loginUserId;
@@ -69,7 +70,7 @@ function createWindow () {
     win = null
   })
 
-  var thread_win = new BrowserWindow({ parent: win })
+  thread_win = new BrowserWindow({ parent: win })
   thread_win.loadURL(url.format({
     pathname: path.join(__dirname, 'thread.ejs'),
     protocol: 'file:',
@@ -260,6 +261,16 @@ ipcMain.on( "showDialong", ( event, msg ) => {
 	});
   
 } );
+
+ipcMain.on( "toggleThreadView", ( event, myGlobalVariableValue ) => {
+  if (isThreadview) {
+    thread_win.show();
+  } else {
+    thread_win.hide();
+  }
+  isThreadview = !isThreadview;
+  console.log('isThreadview = ', isThreadview);
+});
 
 ipcMain.on( "selectDownload", ( event, myGlobalVariableValue ) => {
   global.isSelectDown = myGlobalVariableValue;

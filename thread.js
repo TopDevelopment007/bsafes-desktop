@@ -158,7 +158,10 @@ function processErrors(jqXHR)
         msg.msg = 'unknow error';
         msg.type = 'error';      
     }
-    console.log(jqXHR.status, msg);
+    if (jqXHR) {
+    	console.log('jqXHR.status = ', jqXHR.status);
+    }
+    console.log(msg);
     interval();
 }
 

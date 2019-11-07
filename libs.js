@@ -204,3 +204,9 @@ $('.btnDownloads').click(function(e) {
 
 	navigateView('../../Downloads/views/downloads.ejs');
 })
+
+$('.btnTools').click(function(e) {	
+	ipcRenderer.send( "toggleThreadView", null );
+	console.log('toggled');
+})
+
