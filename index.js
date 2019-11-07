@@ -15,7 +15,7 @@ var download_folder_path = 'bsafes_downloads/';
 // be closed automatically when the JavaScript object is garbage collected.
 let win;
 let thread_win;
-var isThreadview;
+var isThreadview = false;
 
 global.sqliteDB = db;
 global.loginUserId = loginUserId;
@@ -69,15 +69,6 @@ function createWindow () {
     win = null
   })
 
-  thread_win = new BrowserWindow({ parent: win })
-  thread_win.loadURL(url.format({
-    pathname: path.join(__dirname, 'thread.ejs'),
-    protocol: 'file:',
-    slashes: true
-  }))
-  thread_win.webContents.openDevTools();
-  isThreadview = false;
-  thread_win.hide();
   if (global.isDev) {    
     // Open the DevTools.
     win.webContents.openDevTools();
@@ -86,6 +77,34 @@ function createWindow () {
     // thread_win.hide();
   }
 
+  createThreadWindow();
+}
+
+function createThreadWindow() 
+{
+  thread_win = new BrowserWindow({ parent: win })
+  thread_win.loadURL(url.format({
+    pathname: path.join(__dirname, 'thread.ejs'),
+    protocol: 'file:',
+    slashes: true
+  }))
+
+  thread_win.on('closed', () => {
+    // Dereference the window object, usually you would store windows
+    // in an array if your app supports multi windows, this is the time
+    // when you should delete the corresponding element.
+    thread_win = null;
+  })
+
+  thread_win.webContents.openDevTools();
+
+  if (isThreadview) {
+    thread_win.show();
+  } else {
+    thread_win.hide();
+  }
+  
+  // thread_win.hide();
 }
 
 function initSQLiteDB()
@@ -180,8 +199,6 @@ function initSQLiteDB()
 
 function initApp()
 {
-  
-
   if (!fs.existsSync(download_folder_path)){
     fs.mkdirSync(download_folder_path);
   }
@@ -246,7 +263,7 @@ ipcMain.on( "setNavigateFolder", ( event, myGlobalVariableValue ) => {
 } );
 
 ipcMain.on( "showDialong", ( event, msg ) => {
-	const err_dlg_options = {
+	const dlg_options = {
 	  type: msg.type ,
 	  buttons: ['Ok'],
 	  defaultId: 2,
@@ -255,20 +272,35 @@ ipcMain.on( "showDialong", ( event, msg ) => {
 	  detail: '',
 	};
 
-	dialog.showMessageBox(null, err_dlg_options, (response, checkboxChecked) => {
-	  // console.log(response);
-	  // console.log(checkboxChecked);
+	dialog.showMessageBox(null, dlg_options, (response, checkboxChecked) => {
 	});
   
 } );
 
 ipcMain.on( "toggleThreadView", ( event, myGlobalVariableValue ) => {
-  isThreadview = !isThreadview;
-  if (isThreadview) {
-    thread_win.show();
+  if (thread_win) {
+    isThreadview = !isThreadview;
+    if (isThreadview) {
+      thread_win.show();
+    } else {
+      thread_win.hide();
+    }  
   } else {
-    thread_win.hide();
+    // const dlg_options = {
+    //   type: 'error' ,
+    //   buttons: ['Ok'],
+    //   defaultId: 2,
+    //   title: 'Error',
+    //   message: 'Ooh, Thread view was destroyed. Please run again.',
+    //   detail: '',
+    // };
+
+    // dialog.showMessageBox(null, dlg_options, (response, checkboxChecked) => {
+    // });
+    isThreadview = true;
+    createThreadWindow();
   }
+  
   // console.log('isThreadview = ', isThreadview);
 });
 

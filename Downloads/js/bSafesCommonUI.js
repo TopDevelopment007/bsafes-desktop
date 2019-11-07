@@ -1177,36 +1177,6 @@ function displayContainers(containers, total, mode) {
 function showDownloadItemsModal() {
   $('#logDownloadItemsModal').modal('show');
 
-  //$('.modal-body').empty();
-  // dbGetDownloadsItemsFromLogs({from : 0, size: 20}, function(data) {
-  //   if(data.status === 'ok') {
-  //     var hits = data.hits.hits;
-
-  //     hits.forEach(function(item) {
-  //       itemLogTime = item._source.logTime;
-  //       itemName = item._source.teamName;
-  //       var $moveItemsPathItem = $('.moveItemsPathRow').clone().removeClass('moveItemsPathRow hidden').addClass('moveItemsPathItem');
-  //       var htmlstr = itemLogTime + '     ' + itemName;
-  //       $moveItemsPathItem.find('a').text(htmlstr);
-  //       $('.modal-body').append($moveItemsPathItem);
-  //     })
-  //   }
-  // })
-  function displayLogMessage_old()
-  {
-    $('.modal-body').empty();
-    var logs = require('electron').remote.getGlobal('logMesage');
-    console.log('logs', logs.length);
-    logs.reverse().forEach(function(logMsg) {
-      var $moveItemsPathItem = $('.moveItemsPathRow').clone().removeClass('moveItemsPathRow hidden').addClass('moveItemsPathItem');
-      var htmlstr = logMsg.logTime + '     ' + logMsg.message;
-      $moveItemsPathItem.find('a').text(htmlstr);
-      $('.modal-body').append($moveItemsPathItem);
-    })  
-
-    setTimeout(displayLogMessage, 2000);
-  }
-
   var last_log_index = 0;
   function displayLogMessage()
   {

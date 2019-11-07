@@ -101,40 +101,6 @@ function loadPage(){
         //$resultItem.find('.itemType').html(thisType);
       	var link = '/team/' + teamId;
 
-      	//$resultItem.find('.itemTitle').attr('href', makeCallNavigate(link));
- 
-  			$resultItem.find('.selectItemBox').click(function(e) {
-    			var teamPosition = $(e.target).closest('.resultItem').data('position');
-    			var teamId = $(e.target).closest('.resultItem').attr('id');
-    			var team = {id:teamId, position:teamPosition};
-
-    			if(e.target.checked){
-      			selectedTeams.push(team);
-    			} else {
-      			for(var i=0; i< selectedItemsInContainer.length; i++)
-      			{
-        			if(selectedTeams[i].id === itemId) break;
-      			}
-      			selectedTeams.splice(i, 1);
-    			}
-    			updateToolbar(selectedTeams);
-  			});
-
- 
-				$resultItem.find('.addAction').click(function(e) {
-    			e.preventDefault();
-    			$(e.target).closest('.resultItem').find('.addItemBtn').dropdown('toggle');
-    			handleAddAction(e);
-    			return false;
-  			});
-
-  			$resultItem.find('.dropAction').click(function(e) {
-    			e.preventDefault();
-    			handleDropAction(e);
-    			$(e.target).closest('.resultItem').find('.itemActionBtn').dropdown('toggle');
-    			return false;
-  			});
-
         $resultItem.find('.deleteItemBtn').click(function(e) {
           e.preventDefault();
           handleDeleteAction(e);
@@ -167,6 +133,7 @@ function loadPage(){
 		}
     //console.log('ok');
     $('.btnLog').removeClass('hidden');
+    intervalObj();
 	}
 
   function resetPagination() {
@@ -228,20 +195,21 @@ function loadPage(){
 
   listTeams(1);
 
-  var arrLogItems = [];
+  //var arrLogItems = [];
 
-  const intervalObj = setInterval(() => {
+  function intervalObj()  
+  {
     //console.log('interviewing the interval');
-    if (arrLogItems.length) {
-      return;
-    }
+    // if (arrLogItems.length) {
+    //   return;
+    // }
     
     arrLogItems = $('.resultItem');
 
     function getItemStatus() {
-      if (arrLogItems.length == 0) {
-        return;
-      }
+      // if (arrLogItems.length == 0) {
+      //   return;
+      // }
 
       var isStopped = require('electron').remote.getGlobal('isStopped');
       if (isStopped) {
@@ -253,8 +221,8 @@ function loadPage(){
         $('.resumeBtn').addClass('hidden');
       }
 
-      var itemId = $(arrLogItems[0]).attr('id');
-      var $item = $(arrLogItems[0]);
+      var itemId = $(arrLogItems[i]).attr('id');
+      var $item = $(arrLogItems[i]);
       //console.log('itemId', itemId);
       dbGetDownloadedCountInItem(itemId, function(err, total, downloaded, errors) {
         if (err) {
@@ -283,17 +251,18 @@ function loadPage(){
           }
           arrLogItems.splice( 0, 1 );   
           //getItemStatus();   
-          setTimeout(getItemStatus, 300);
+          //setTimeout(getItemStatus, 300);
         }
       });
     }
 
+    for (var i=0; i<arrLogItems.length; i++) {
+      getItemStatus();
+    }
 
-
-    getItemStatus();
-    
-    
-  }, 1000);
+    setTimeout(intervalObj, 1000);
+   
+  }
 
 
   
