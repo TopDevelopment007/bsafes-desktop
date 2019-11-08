@@ -89,6 +89,21 @@ function createThreadWindow()
     slashes: true
   }))
 
+  thread_win.on('close', function (event) {
+    event.preventDefault();
+    const dlg_options = {
+      type: 'warning' ,
+      buttons: ['Ok'],
+      defaultId: 2,
+      title: 'Warning',
+      message: 'Do not close thread view.',
+      detail: '',
+    };
+
+    dialog.showMessageBox(null, dlg_options, (response, checkboxChecked) => {
+    });
+  });
+
   thread_win.on('closed', () => {
     // Dereference the window object, usually you would store windows
     // in an array if your app supports multi windows, this is the time
