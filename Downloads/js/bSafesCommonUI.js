@@ -1178,11 +1178,18 @@ function showDownloadItemsModal() {
   $('#logDownloadItemsModal').modal('show');
 
   var last_log_index = 0;
+  var total_log = [];
   function displayLogMessage()
   {
     //$('.modal-body').empty();
     var logs = require('electron').remote.getGlobal('logMesage');
     ipcRenderer.send( "sliceDownloadLogs", logs.length );
+    total_log.push(logs);
+
+    if (logs.length > 10) {
+      logs = logs.slice(logs.length-10);
+    }
+    //$('.modal-body').empty();
     
     logs.forEach(function(logMsg) {
       //$skey = $("span").find("[skey='" + logMsg.skey + "']"); 
