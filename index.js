@@ -125,14 +125,15 @@ function createThreadWindow()
 function initSQLiteDB()
 {
   // check whether database file exists...
-  fs.access(databaseFile, fs.F_OK, (err) => {
+  let joinedDbFile = path.join(__dirname, databaseFile);
+  fs.access(joinedDbFile, fs.F_OK, (err) => {
     if (err) {
       //console.error(err)
-      fs.closeSync(fs.openSync(databaseFile, 'w'));
+      fs.closeSync(fs.openSync(joinedDbFile, 'w'));
       //return;
     }
     //file exists
-    db = new sqlite3.Database(databaseFile, (err) => {
+    db = new sqlite3.Database(joinedDbFile, (err) => {
       if (err) {
         return console.error(err.message);
       }
@@ -214,8 +215,9 @@ function initSQLiteDB()
 
 function initApp()
 {
-  if (!fs.existsSync(download_folder_path)){
-    fs.mkdirSync(download_folder_path);
+  let joinedPath = path.join(__dirname, download_folder_path);
+  if (!fs.existsSync(joinedPath)){
+    fs.mkdirSync(joinedPath);
   }
 
   initSQLiteDB();
