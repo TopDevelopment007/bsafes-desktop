@@ -51,7 +51,13 @@ brew cask install bsafes-desktop
 ```
 
 
-## Packaging Electron App for Windows / MAC:
+## Packaging Electron App for Windows / MAC / Linux:
+
+Numerous target formats:
+This works for all platforms. Just run in windows / mac / linux to generate the respective platform.
+The details can be verified in below link
+
+Steps:
 
 1.	Download and install “yarn”. It is recommended to use yarn instead of npm for the packaging.
 2.	Install electron-builder package by running below script
@@ -75,3 +81,5 @@ yarn dist
 5.	It will generate artifact in the “dist” folder of project directory
 
 
+
+https://github.com/electron-userland/electron-builder
