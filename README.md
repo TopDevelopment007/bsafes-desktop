@@ -50,4 +50,29 @@ npm run build:win64
 brew cask install bsafes-desktop
 ```
 
+```
+## Packaging Electron App for Windows / MAC:
+```
+
+1.	Download and install “yarn”. It is recommended to use yarn instead of npm for the packaging.
+2.	Install electron-builder package by running below script
+yarn add electron-builder --dev
+
+3.	Configure package.json file and include “dist” as below
+"scripts": {
+    ...
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "build":{
+    "appId": "com.your.app ",
+    "productName": "Your Product",
+    "asar": "false"
+  },
+
+4.	Run the below command
+yarn dist
+
+5.	It will generate artifact in the “dist” folder of project directory
+
 
