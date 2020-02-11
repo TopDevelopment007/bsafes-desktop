@@ -36,21 +36,6 @@ cd bsafes-desktop
 npm install && npm start
 ```
 
-To pack into an app, simply type one of these:
-
-``` shell
-npm run build:osx
-npm run build:linux
-npm run build:win32
-npm run build:win64
-```
-
-
-```bash
-brew cask install bsafes-desktop
-```
-
-
 ## Packaging Electron App for Windows / MAC / Linux:
 
 Numerous target formats:
