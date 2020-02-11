@@ -33,8 +33,11 @@
   },
   "build":{
     "appId": "com.bsafe.desktop",
-    "productName": "BSafe Desktop",
-	  "asar": "false"
+    "productName": "BSafe Desktop"
+    "asar": "false",
+    "directories": {
+      "buildResources": "build"
+    }
   },
   "repository": {
     "type": "git",
