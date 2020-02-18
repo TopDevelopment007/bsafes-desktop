@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "electron": "^1.8.8",
-    "electron-builder": "^19.56.2",
+    "electron-builder": "^20.3.0",
     "electron-rebuild": "^1.8.5"
   },
   "scripts": {
@@ -31,19 +31,29 @@
     "pack": "electron-builder --dir",
     "dist": "electron-builder"
   },
-  "build":{
+  "build": {
     "appId": "com.bsafe.desktop",
     "productName": "BSafes Desktop",
     "asar": "false",
     "directories": {
       "buildResources": "build"
+    },
+    "linux": {
+      "target": [
+        "deb",
+        "rpm"
+      ],
+      "icon": "./build/icon.icns"
     }
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Vj3k0/electron-tabs.git"
   },
-  "author": "",
+  "author": {
+    "name": "Testing",
+    "email": "test@testing.com"
+  },
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/Vj3k0/electron-tabs/issues"

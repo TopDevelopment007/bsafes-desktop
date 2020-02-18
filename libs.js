@@ -16,6 +16,7 @@ function makeCallNavigate(link)
 
 function navigateView(goto_view)
 {
+	console.log("Test : " + goto_view);
 	// extract Get Params.
 	var view_url = goto_view;
 	view_url = view_url.split('?');
@@ -98,7 +99,7 @@ function navigateView(goto_view)
 
 	// set <bsafes_last_url>, <local_last_url>
 	if (remote.getGlobal('navigateFolder') == 'bsafes') {
-		__dirname = __dirname + '/../../BSafes/views/';
+		__dirname = __dirname + '/../../Bsafes/views/';
 		localStorage.setItem('bsafes_last_url', goto_view);
 	} else if (remote.getGlobal('navigateFolder') == 'local') {
 		__dirname = __dirname + '/../../Local/views/';
