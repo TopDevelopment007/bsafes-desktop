@@ -984,7 +984,7 @@ function dbGetDownloadedCountInItem(itemId, done)
 			var errors = 0;
 			rows.forEach(function (row) {  
 				counter++;
-				if (row.isDownload == 1) {
+				if (row.isDownload == 0) {
 					downloaded++;
 				} else if (row.isDownload == -1) {
 					errors++;

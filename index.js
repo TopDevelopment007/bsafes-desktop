@@ -20,7 +20,7 @@ var isThreadview = false;
 global.sqliteDB = db;
 global.loginUserId = loginUserId;
 global.logMesage = [];
-global.isDev = true;
+global.isDev = false;
 global.navigateFolder = 'bsafes';
 global.isStopped = false;
 global.isSelectDown = false;
@@ -28,6 +28,7 @@ global.logModal = '';
 
 
 function createWindow () {
+  
   // Create the browser window.
   win = new BrowserWindow({
     width: 900, 
@@ -77,7 +78,7 @@ function createWindow () {
     // thread_win.hide();
   }
 
-  createThreadWindow();
+  //createThreadWindow();
 }
 
 function createThreadWindow() 
@@ -111,7 +112,7 @@ function createThreadWindow()
     thread_win = null;
   })
 
-  thread_win.webContents.openDevTools();
+  //thread_win.webContents.openDevTools();
 
   if (isThreadview) {
     thread_win.show();
