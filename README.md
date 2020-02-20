@@ -36,7 +36,7 @@ cd bsafes-desktop
 npm install && npm start
 ```
 
-## Packaging Electron App for Windows / MAC / Linux:
+## Packaging Electron App for Windows / MAC    &  Packaging Electron App for Linux:
 
 Numerous target formats:
 This works for all platforms. Just run in windows / mac / linux to generate the respective platform.
