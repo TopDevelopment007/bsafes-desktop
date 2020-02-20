@@ -65,6 +65,19 @@ yarn dist
 
 5.	It will generate artifact in the “dist” folder of project directory
 
-
+==============================================================================
+How to build .deb and .rpm for linux?
+ - Clone the repository 
+ - Go to root folder of the project
+ - Run ​npm install 
+ - Run npm run dist 
+ - After completion, there will be two files in dist folder 
+ ==============================================================================
+How to install .deb?
+ - Click on ​bsafes-Deskop_1.0.0_amd64.deb 
+ - After installation, open terminal
+ - Run ​sudo chmod 777 -R /opt/BSafes\ Desktop/
+ - Launch app from application list 
+ 
 
 https://github.com/electron-userland/electron-builder
