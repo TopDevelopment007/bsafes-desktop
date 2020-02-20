@@ -73,7 +73,7 @@ var iconSpreadsheet = addr_images + 'spreadSheet.jpg';
 var iconDoc = addr_images + 'docIcon.jpg';
 var iconDiagram = addr_images + 'diagram.jpg';
 
-var download_folder_path = 'bsafes_downloads/';
+var download_folder_path = __dirname + '/../../bsafes_downloads/';
 const fs = require('fs');
 
 var library_path = __dirname + '/../../';

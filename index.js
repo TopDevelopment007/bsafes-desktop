@@ -78,12 +78,12 @@ function createWindow () {
     // thread_win.hide();
   }
 
-  //createThreadWindow();
+  createThreadWindow();
 }
 
 function createThreadWindow() 
 {
-  thread_win = new BrowserWindow({ parent: win })
+  thread_win = new BrowserWindow({ parent: win, show: false })
   thread_win.loadURL(url.format({
     pathname: path.join(__dirname, 'thread.ejs'),
     protocol: 'file:',
@@ -98,7 +98,7 @@ function createThreadWindow()
       defaultId: 2,
       title: 'Warning',
       message: 'Do not close thread view.',
-      detail: '',
+      detail: ''
     };
 
     dialog.showMessageBox(null, dlg_options, (response, checkboxChecked) => {

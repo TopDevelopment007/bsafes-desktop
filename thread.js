@@ -1,5 +1,5 @@
 var server_addr = 'https://www.openbsafes.com'
-var download_folder_path = 'bsafes_downloads/';
+var download_folder_path = __dirname + '/bsafes_downloads/';
 var forge = require('node-forge');
 var BSON = require('bson');
 var moment = require('moment');
