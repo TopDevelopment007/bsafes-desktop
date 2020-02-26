@@ -56,13 +56,12 @@ function init()
 			isGoOn = false;
 			console.log('completed initialize thread...');
 	        db = require('electron').remote.getGlobal('sqliteDB');
-            setSQLiteDB(db); 
+	        setSQLiteDB(db);  
 	        interval();      
 	    }
     }
 
     if (isGoOn) {
-        
     	setTimeout(init, 200);
     }
 }
@@ -218,7 +217,7 @@ function downloadPage(pageId)
 
 }
 
-function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey, done, thisVersion) {    
+function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey, done, thisVersion) {
     oldVersion = "undefined"
     if (!thisVersion) {
         expandedKey = thisExpandedKey;
@@ -249,7 +248,6 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
                     }, function(total_data, textStatus, jQxhr) {
                         dbInsertPageContents(server_addr + '/memberAPI/getPageComments', thisItemId, total_data);
                     });
-                    
                 } else {
                     dbInsertPageContents(server_addr + '/memberAPI/getPageComments', thisItemId, data);
                 }
@@ -278,333 +276,321 @@ function getPageItem(thisItemId, thisExpandedKey, thisPrivateKey, thisSearchKey,
     }
     
     saveLog('< ' + thisItemId + '> started.', '', 1);
-    
-    dbQueryGetPageItem(server_addr + '/memberAPI/getPageItem', options, function(data, textStatus, jQxhr) {
-        var db_version = data.item ? data.item.version : null;
-        console.log("DB Version : " + db_version);
-        $.post(server_addr + '/memberAPI/getPageItem', options, function(data, textStatus, jQxhr) {
-            if (data.status === 'ok') {
-                console.log('  == (downloaded page item)');
-                dbInsertPageContents(server_addr + '/memberAPI/getPageItem', thisItemId, data);
-                var server_version = data.item.version;
-                if (data.item) {
-                    itemCopy = data.item;
-                    isBlankPageItem = false;
-                    var item = data.item;
-    
-                    itemSpace = item.space;
-                    itemContainer = item.container;
-                    itemPosition = item.position;
-    
-                    dbInsertDownloadList(itemContainer);
-    
-                    function decryptItem(envelopeKey, fn) {
-                        if((item.keyEnvelope === undefined) || (item.envelopeIV === undefined) || (item.ivEnvelope === undefined) || (item.ivEnvelopeIV === undefined)) {
-                            //getAndShowPath(itemId, envelopeKey, teamName, "");
-                            //dbUpdatePageStatusWithError(itemId);
-                            done("Error: undefined item key");
-                            return;
-                        }
-                        itemKey = decryptBinaryString(item.keyEnvelope, envelopeKey, item.envelopeIV);
-                        itemIV = decryptBinaryString(item.ivEnvelope, envelopeKey, item.ivEnvelopeIV);
-                        itemTags = [];
-                        if (item.tags && item.tags.length > 1) {
-                            var encryptedTags = item.tags;
-                            for (var i = 0; i < (item.tags.length - 1); i++) {
-                                try {
-                                    var encryptedTag = encryptedTags[i];
-                                    var encodedTag = decryptBinaryString(encryptedTag, itemKey, itemIV);
-                                    var tag = forge.util.decodeUtf8(encodedTag);
-                                    //itemTags.push(tag);
-                                    if (tag == constContentTypeWrite) {
-                                        pageContentType = tag;
-                                    } else if (tag == constContentTypeDraw) {
-                                        pageContentType = tag;
-                                    } else if (tag == constContentTypeSpreadsheet) {
-                                        pageContentType = tag;
-                                    } else if (tag == constContentTypeDoc) {
-                                        pageContentType = tag;
-                                    } else if (tag == constContentTypeMxGraph) {
-                                        pageContentType = tag;
-                                    } else {
-                                        itemTags.push(tag);                                        
-                                    }
-                                } catch (err) {
-                                        alert(err);
-                                }
-                            }
-                            //$('#tagsInput').tokenfield('setTokens', itemTags);
-                        } else {
-                            pageContentType = constContentTypeWrite;
-                        }
-    
-                        $('.container').data('itemId', itemId);
-                        $('.container').data('itemKey', itemKey);
-                        $('.container').data('itemIV', itemIV);
-                        var titleText = "";
-                        if (item.title) {
-                            try {
-                                var encodedTitle = decryptBinaryString(item.title, itemKey, itemIV);
-                                title = forge.util.decodeUtf8(encodedTitle);
-                                title = DOMPurify.sanitize(title);
-                                $('.froala-editor#title').html(title);
-                                titleText = document.title = $(title).text();
-                            } catch (err) {
-                                alert(err);
-                            }
-                        } else {
-                            $('.froala-editor#title').html('<h2></h2>');
-                        }
-                        pageName = titleText;
-    
-                        saveLog('< ' + pageName + '> started.', '', 1);
-                        //if (current_down_item) logObj.push(current_down_item);
-                        current_down_item = { 'itemId': thisItemId, 'itemName': pageName, logs: [] };
-                        current_down_item.logs.push();
-                        //getAndShowPath(thisItemId, envelopeKey, teamName, titleText);
-                        getAndShowPath(thisItemId, envelopeKey, titleText);
-                        var item_content = '';
-                        var content = null;
-                        if (item.content) {
-                            try {
-                                var encodedContent = decryptBinaryString(item.content, itemKey, itemIV);
-                                content = forge.util.decodeUtf8(encodedContent);
-                                DOMPurify.addHook('afterSanitizeAttributes', function(node) {
-                                    // set all elements owning target to target=_blank
-                                    if ('target' in node) {
-                                        node.setAttribute('target', '_blank');
-                                    }
-                                    // set non-HTML/MathML links to xlink:show=new
-                                    if (!node.hasAttribute('target') && (node.hasAttribute('xlink:href') || node.hasAttribute('href'))) {
-                                        node.setAttribute('xlink:show', 'new');
-                                    }
-                                });
-                                content = DOMPurify.sanitize(content);
-                                item_content = content;
-                                //$('.froala-editor#content').html(content);
-                                if (content && (pageContentType == null)) { // old case...
-                                    pageContentType = constContentTypeWrite;
-                                }
-                            } catch (err) {
-                                alert(err);
-                            }
-                        } else {
-                            dbSetTotalCountersOfPage(itemId, 'ContentsImage', 0);
-                            dbSetTotalCountersOfPage(itemId, 'Video', 0);
-                        }
-    
-                        // initContentView(content);
-    
-                        var image_length = 0;
-                        if (item.images && item.images.length && (!db_version || db_version != server_version)) {
-                            image_length = item.images.length;
-                            // dbSetTotalCountersOfPage(itemId, 'Image', item.images.length);
 
-                            function buildDownloadImagesList() {
-                                var images = item.images;
-                                var $lastElement = $('.imageBtnRow');
-                                for (var i = 0; i < images.length; i++) {
-                                    $downloadImage = $('.downloadImageTemplate').clone().removeClass('downloadImageTemplate hidden').addClass('downloadImage');
-                                    var id = 'index-' + i;
-                                    $downloadImage.attr('id', id);
-                                    var s3Key = images[i].s3Key;
-                                    var words = images[i].words;
-                                    $downloadImage.data('s3Key', s3Key);
-                                    $downloadImage.data('words', words);
-                                    $downloadImage.find('.downloadText').text("");
-                                    $lastElement.after($downloadImage);
-                                    $lastElement = $downloadImage;
-                                }
-                            }
-    
-                            buildDownloadImagesList();
-                        } else {
-                            console.log("Not need to download the existing one");
-                            // dbSetTotalCountersOfPage(itemId, 'Image', 0);
-                        }
-    
-                        page_content = content;
-                        page_item = item;
-                        isSkipGetItem = true;
-    
-                        currentContentImage = 0;
-                        currentContentVideo = 0;
-                        currentImage = 0;
-                        currentAttachmentIndex = 1;
-                        currentAttachmentChunkIndex = 0;
-    
-                        var content_image_length = 0;
-                        var content_video_length = 0;
-    
-                        if ( (page_content) && (pageContentType == constContentTypeWrite) ){
-                            //console.log('page_content = ', page_content);
-                            var encryptedImages = $(page_content).find(".bSafesImage");
-                            var videoDownloads = $(page_content).find(".bSafesDownloadVideo");
-                            content_image_length = encryptedImages.length;
-                            content_video_length = videoDownloads.length;
-                        }
-    
-                        // counts content image.                    
-                        dbSetTotalCountersOfPage(itemId, 'ContentsImage', content_image_length);
-                        console.log('  == (contents_image counts = )', content_image_length);
-                        if (content_image_length) {
-                            saveLog('   Content Image counts : ' + content_image_length);
-                        }
-    
-                        // counts content video.				    
-                        dbSetTotalCountersOfPage(itemId, 'Video', content_video_length);
-                        console.log('  == (contents_video counts = )', content_video_length);
-                        if (content_video_length) {
-                            saveLog('   Content Video counts : ' + content_video_length);    					
-                        }
-    
-                        // counts image.
-                        dbSetTotalCountersOfPage(itemId, 'Image', image_length);
-                        console.log('  == (Iamge counts = )', image_length);
-                        if (image_length) {
-                            saveLog('   Image counts : ' + image_length);    					
-                        }
-                        
-                        // counts attachments.
-                        var attachments_length = 0; 
-                        if(!db_version || db_version != server_version) {
-                            attachments = item.attachments; 
-                            var attachments_length = attachments.length - 1; 
-                        } else {
-                            console.log("Version is same. No need to download attachments");
-                            
-                        }
-                                          
-    
-                        dbSetTotalCountersOfPage(itemId, 'Attatchment', attachments_length);
-                        console.log('  == Attachment counts : ' + attachments_length);
-                        if (attachments_length) {
-                            saveLog('   Attachment counts : ' + attachments_length); 
-                        }
-    
-                        startDownloadResourceFiles(page_content, page_item, function() {
-                            fn();
-                        });
-                        
-                        
-                    } // end function decryptItem()
-    
-                    if (itemSpace.substring(0, 1) === 'u') {
-                        $('.navbarTeamName').text("Yours");
-                        decryptItem(expandedKey, done);
-                        getPageComments();
-                        //done(null, item);
-                    } else {
-                        isATeamItem = true;
-                        var itemSpaceParts = itemSpace.split(':');
-                        itemSpaceParts.splice(-2, 2);
-                        teamId = itemSpaceParts.join(':');
-                        getTeamData(teamId, function(err, team) {
-                            if (err) {
-                                done(err, item);
-                            } else {
-                                var teamKeyEnvelope = team.teamKeyEnvelope;
-                                teamKey = pkiDecrypt(teamKeyEnvelope);
-                                var encryptedTeamName = team.team._source.name;
-                                var teamIV = team.team._source.IV;
-                                teamName = decryptBinaryString(encryptedTeamName, teamKey, teamIV);
-                                teamName = forge.util.decodeUtf8(teamName);
-                                teamName = DOMPurify.sanitize(teamName);
-    
-                                if (teamName.length > 20) {
-                                    var displayTeamName = teamName.substr(0, 20);
+    $.post(server_addr + '/memberAPI/getPageItem', options, function(data, textStatus, jQxhr) {
+        if (data.status === 'ok') {
+            console.log('  == (downloaded page item)');
+            dbInsertPageContents(server_addr + '/memberAPI/getPageItem', thisItemId, data);
+
+            if (data.item) {
+                itemCopy = data.item;
+                isBlankPageItem = false;
+
+                var item = data.item;
+
+                itemSpace = item.space;
+                itemContainer = item.container;
+                itemPosition = item.position;
+
+                dbInsertDownloadList(itemContainer);
+
+                function decryptItem(envelopeKey, fn) {
+                    if((item.keyEnvelope === undefined) || (item.envelopeIV === undefined) || (item.ivEnvelope === undefined) || (item.ivEnvelopeIV === undefined)) {
+						//getAndShowPath(itemId, envelopeKey, teamName, "");
+						//dbUpdatePageStatusWithError(itemId);
+						done("Error: undefined item key");
+						return;
+					}
+                    itemKey = decryptBinaryString(item.keyEnvelope, envelopeKey, item.envelopeIV);
+                    itemIV = decryptBinaryString(item.ivEnvelope, envelopeKey, item.ivEnvelopeIV);
+                    itemTags = [];
+                    if (item.tags && item.tags.length > 1) {
+                        var encryptedTags = item.tags;
+                        for (var i = 0; i < (item.tags.length - 1); i++) {
+                            try {
+                                var encryptedTag = encryptedTags[i];
+                                var encodedTag = decryptBinaryString(encryptedTag, itemKey, itemIV);
+                                var tag = forge.util.decodeUtf8(encodedTag);
+                                //itemTags.push(tag);
+                                if (tag == constContentTypeWrite) {
+                                    pageContentType = tag;
+                                } else if (tag == constContentTypeDraw) {
+                                    pageContentType = tag;
+                                } else if (tag == constContentTypeSpreadsheet) {
+                                    pageContentType = tag;
+                                } else if (tag == constContentTypeDoc) {
+                                    pageContentType = tag;
+                                } else if (tag == constContentTypeMxGraph) {
+                                    pageContentType = tag;
                                 } else {
-                                    var displayTeamName = teamName;
+                                    itemTags.push(tag);
                                 }
-    
-                                $('.navbarTeamName').text(displayTeamName);
-    
-                                var teamSearchKeyEnvelope = team.team._source.searchKeyEnvelope;
-                                var teamSearchKeyIV = team.team._source.searchKeyIV;
-    
-                                teamSearchKey = decryptBinaryString(teamSearchKeyEnvelope, teamKey, teamSearchKeyIV);
-                                //setIsATeamItem(teamKey, teamSearchKey);
-    
-                                decryptItem(teamKey, done);
-                                getPageComments();
-                                //done(null, item);
+                            } catch (err) {
+                                alert(err);
                             }
-                        });
-                    }
-                } else {
-    
-                    if ((itemId.substring(0, 2) === 'np') || (itemId.substring(0, 2) === 'dp')) {
-                        itemIdParts = itemId.split(':');
-    
-                        if (itemId.substring(0, 2) === 'np') {
-                            itemContainer = 'n';
-                            itemPosition = Number(itemIdParts[itemIdParts.length - 1]);
-                        } else if (itemId.substring(0, 2) === 'dp') {
-                            itemContainer = 'd';
-                            var dateText = itemIdParts[itemIdParts.length - 1];
-                            dateText = dateText.replace(/-/g, "");
-                            itemPosition = Number(dateText);
                         }
-                        for (var i = 1; i < itemIdParts.length - 1; i++) {
-                            itemContainer = itemContainer + ':' + itemIdParts[i];
-                        }
-                        //setupContainerPageKeyValue('itemPosition', itemPosition);
-                        isBlankPageItem = true;
-                        getPath(itemContainer, itemId, function(itemPath) {
-                            itemSpace = itemPath[0]._id;
-
-                            if (itemSpace.substring(0, 1) === 't') {
-                                isATeamItem = true;
-    
-                                var itemSpaceParts = itemSpace.split(':');
-                                itemSpaceParts.splice(-2, 2);
-                                teamId = itemSpaceParts.join(':');
-                                getTeamData(teamId, function(err, team) {
-                                    if (err) {
-                                        done(err, thisItemId);
-                                    } else {
-                                        var teamKeyEnvelope = team.teamKeyEnvelope;
-                                        teamKey = pkiDecrypt(teamKeyEnvelope);
-                                        var encryptedTeamName = team.team._source.name;
-                                        var teamIV = team.team._source.IV;
-                                        teamName = decryptBinaryString(encryptedTeamName, teamKey, teamIV);
-                                        teamName = forge.util.decodeUtf8(teamName);
-                                        teamName = DOMPurify.sanitize(teamName);
-                                        var teamSearchKeyEnvelope = team.team._source.searchKeyEnvelope;
-                                        var teamSearchKeyIV = team.team._source.searchKeyIV;
-                                        teamSearchKey = decryptBinaryString(teamSearchKeyEnvelope, teamKey, teamSearchKeyIV);
-                                        $('.pathSpace').find('a').html(teamName);
-                                        //showPath(teamName, itemPath, itemContainer, teamKey, itemId);
-    
-                                        //setupNewItemKey();
-                                        console.log('err1');
-                                        done(null, null);
-                                    }
-                                });
-                            } else {
-                                //setupNewItemKey();
-                                //showPath('Personal', itemPath, itemContainer, expandedKey, itemId);
-                                console.log('err2');
-                                done(null, null);
-                            }
-                        });
+                        //$('#tagsInput').tokenfield('setTokens', itemTags);
                     } else {
-                        console.log('err3');
-                        done(null, null);
+                        pageContentType = constContentTypeWrite;
                     }
+
+                    $('.container').data('itemId', itemId);
+                    $('.container').data('itemKey', itemKey);
+                    $('.container').data('itemIV', itemIV);
+                    var titleText = "";
+                    if (item.title) {
+                        try {
+                            var encodedTitle = decryptBinaryString(item.title, itemKey, itemIV);
+                            title = forge.util.decodeUtf8(encodedTitle);
+                            title = DOMPurify.sanitize(title);
+                            $('.froala-editor#title').html(title);
+                            titleText = document.title = $(title).text();
+                        } catch (err) {
+                            alert(err);
+                        }
+                    } else {
+                        $('.froala-editor#title').html('<h2></h2>');
+                    }
+                    pageName = titleText;
+
+                    saveLog('< ' + pageName + '> started.', '', 1);
+                    //if (current_down_item) logObj.push(current_down_item);
+                    current_down_item = { 'itemId': thisItemId, 'itemName': pageName, logs: [] };
+                    current_down_item.logs.push();
+                    //getAndShowPath(thisItemId, envelopeKey, teamName, titleText);
+                    getAndShowPath(thisItemId, envelopeKey, titleText);
+                    var item_content = '';
+                    var content = null;
+                    if (item.content) {
+                        try {
+                            var encodedContent = decryptBinaryString(item.content, itemKey, itemIV);
+                            content = forge.util.decodeUtf8(encodedContent);
+                            DOMPurify.addHook('afterSanitizeAttributes', function(node) {
+                                // set all elements owning target to target=_blank
+                                if ('target' in node) {
+                                    node.setAttribute('target', '_blank');
+                                }
+                                // set non-HTML/MathML links to xlink:show=new
+                                if (!node.hasAttribute('target') && (node.hasAttribute('xlink:href') || node.hasAttribute('href'))) {
+                                    node.setAttribute('xlink:show', 'new');
+                                }
+                            });
+                            content = DOMPurify.sanitize(content);
+                            item_content = content;
+                            //$('.froala-editor#content').html(content);
+                            if (content && (pageContentType == null)) { // old case...
+                                pageContentType = constContentTypeWrite;
+                            }
+                        } catch (err) {
+                            alert(err);
+                        }
+                    } else {
+                        dbSetTotalCountersOfPage(itemId, 'ContentsImage', 0);
+                        dbSetTotalCountersOfPage(itemId, 'Video', 0);
+                    }
+
+                    // initContentView(content);
+
+                    var image_length = 0;
+                    if (item.images && item.images.length) {
+                    	image_length = item.images.length;
+                        // dbSetTotalCountersOfPage(itemId, 'Image', item.images.length);
+
+                        function buildDownloadImagesList() {
+                            var images = item.images;
+                            var $lastElement = $('.imageBtnRow');
+                            for (var i = 0; i < images.length; i++) {
+                                $downloadImage = $('.downloadImageTemplate').clone().removeClass('downloadImageTemplate hidden').addClass('downloadImage');
+                                var id = 'index-' + i;
+                                $downloadImage.attr('id', id);
+                                var s3Key = images[i].s3Key;
+                                var words = images[i].words;
+                                $downloadImage.data('s3Key', s3Key);
+                                $downloadImage.data('words', words);
+                                $downloadImage.find('.downloadText').text("");
+                                $lastElement.after($downloadImage);
+                                $lastElement = $downloadImage;
+                            }
+                        }
+
+                        buildDownloadImagesList();
+                    } else {
+                        // dbSetTotalCountersOfPage(itemId, 'Image', 0);
+                    }
+
+                    page_content = content;
+                    page_item = item;
+                    isSkipGetItem = true;
+
+                    currentContentImage = 0;
+                    currentContentVideo = 0;
+                    currentImage = 0;
+                    currentAttachmentIndex = 1;
+                    currentAttachmentChunkIndex = 0;
+
+                    var content_image_length = 0;
+                    var content_video_length = 0;
+
+                    if ( (page_content) && (pageContentType == constContentTypeWrite) ){
+                    	//console.log('page_content = ', page_content);
+                    	var encryptedImages = $(page_content).find(".bSafesImage");
+                    	var videoDownloads = $(page_content).find(".bSafesDownloadVideo");
+                    	content_image_length = encryptedImages.length;
+                    	content_video_length = videoDownloads.length;
+                    }
+
+                    // counts content image.                    
+				    dbSetTotalCountersOfPage(itemId, 'ContentsImage', content_image_length);
+				    console.log('  == (contents_image counts = )', content_image_length);
+				    if (content_image_length) {
+				    	saveLog('   Content Image counts : ' + content_image_length);
+				    }
+
+				    // counts content video.				    
+				    dbSetTotalCountersOfPage(itemId, 'Video', content_video_length);
+				    console.log('  == (contents_video counts = )', content_video_length);
+    				if (content_video_length) {
+				    	saveLog('   Content Video counts : ' + content_video_length);    					
+    				}
+
+    				// counts image.
+    				dbSetTotalCountersOfPage(itemId, 'Image', image_length);
+    				console.log('  == (Iamge counts = )', image_length);
+    				if (image_length) {
+				    	saveLog('   Image counts : ' + image_length);    					
+    				}
+
+    				// counts attachments.
+                    attachments = item.attachments; 
+                    var attachments_length = attachments.length - 1;                   
+
+                    dbSetTotalCountersOfPage(itemId, 'Attatchment', attachments_length);
+                    console.log('  == Attachment counts : ' + attachments_length);
+                    if (attachments_length) {
+                    	saveLog('   Attachment counts : ' + attachments_length); 
+                    }
+
+                    startDownloadResourceFiles(page_content, page_item, function() {
+                        fn();
+                    });
+                    
+                    
+                } // end function decryptItem()
+
+                if (itemSpace.substring(0, 1) === 'u') {
+                    $('.navbarTeamName').text("Yours");
+                    decryptItem(expandedKey, done);
+                    getPageComments();
+                    //done(null, item);
+                } else {
+                    isATeamItem = true;
+                    var itemSpaceParts = itemSpace.split(':');
+                    itemSpaceParts.splice(-2, 2);
+                    teamId = itemSpaceParts.join(':');
+                    getTeamData(teamId, function(err, team) {
+                        if (err) {
+                            done(err, item);
+                        } else {
+                            var teamKeyEnvelope = team.teamKeyEnvelope;
+                            teamKey = pkiDecrypt(teamKeyEnvelope);
+                            var encryptedTeamName = team.team._source.name;
+                            var teamIV = team.team._source.IV;
+                            teamName = decryptBinaryString(encryptedTeamName, teamKey, teamIV);
+                            teamName = forge.util.decodeUtf8(teamName);
+                            teamName = DOMPurify.sanitize(teamName);
+
+                            if (teamName.length > 20) {
+                                var displayTeamName = teamName.substr(0, 20);
+                            } else {
+                                var displayTeamName = teamName;
+                            }
+
+                            $('.navbarTeamName').text(displayTeamName);
+
+                            var teamSearchKeyEnvelope = team.team._source.searchKeyEnvelope;
+                            var teamSearchKeyIV = team.team._source.searchKeyIV;
+
+                            teamSearchKey = decryptBinaryString(teamSearchKeyEnvelope, teamKey, teamSearchKeyIV);
+                            //setIsATeamItem(teamKey, teamSearchKey);
+
+                            decryptItem(teamKey, done);
+                            getPageComments();
+                            //done(null, item);
+                        }
+                    });
                 }
             } else {
-                console.log('** (err_getPageItem_data.status)', data.error, thisItemId);
-                done(data.error, null)
+
+                if ((itemId.substring(0, 2) === 'np') || (itemId.substring(0, 2) === 'dp')) {
+                    itemIdParts = itemId.split(':');
+
+                    if (itemId.substring(0, 2) === 'np') {
+                        itemContainer = 'n';
+                        itemPosition = Number(itemIdParts[itemIdParts.length - 1]);
+                    } else if (itemId.substring(0, 2) === 'dp') {
+                        itemContainer = 'd';
+                        var dateText = itemIdParts[itemIdParts.length - 1];
+                        dateText = dateText.replace(/-/g, "");
+                        itemPosition = Number(dateText);
+                    }
+                    for (var i = 1; i < itemIdParts.length - 1; i++) {
+                        itemContainer = itemContainer + ':' + itemIdParts[i];
+                    }
+                    //setupContainerPageKeyValue('itemPosition', itemPosition);
+                    isBlankPageItem = true;
+                    getPath(itemContainer, itemId, function(itemPath) {
+                        itemSpace = itemPath[0]._id;
+
+                        if (itemSpace.substring(0, 1) === 't') {
+                            isATeamItem = true;
+
+                            var itemSpaceParts = itemSpace.split(':');
+                            itemSpaceParts.splice(-2, 2);
+                            teamId = itemSpaceParts.join(':');
+                            getTeamData(teamId, function(err, team) {
+                                if (err) {
+                                    done(err, thisItemId);
+                                } else {
+                                    var teamKeyEnvelope = team.teamKeyEnvelope;
+                                    teamKey = pkiDecrypt(teamKeyEnvelope);
+                                    var encryptedTeamName = team.team._source.name;
+                                    var teamIV = team.team._source.IV;
+                                    teamName = decryptBinaryString(encryptedTeamName, teamKey, teamIV);
+                                    teamName = forge.util.decodeUtf8(teamName);
+                                    teamName = DOMPurify.sanitize(teamName);
+                                    var teamSearchKeyEnvelope = team.team._source.searchKeyEnvelope;
+                                    var teamSearchKeyIV = team.team._source.searchKeyIV;
+                                    teamSearchKey = decryptBinaryString(teamSearchKeyEnvelope, teamKey, teamSearchKeyIV);
+                                    $('.pathSpace').find('a').html(teamName);
+                                    //showPath(teamName, itemPath, itemContainer, teamKey, itemId);
+
+                                    //setupNewItemKey();
+                                    console.log('err1');
+                                    done(null, null);
+                                }
+                            });
+                        } else {
+                            //setupNewItemKey();
+                            //showPath('Personal', itemPath, itemContainer, expandedKey, itemId);
+                            console.log('err2');
+                            done(null, null);
+                        }
+                    });
+                } else {
+                    console.log('err3');
+                    done(null, null);
+                }
             }
-            
-        }, 'json')
-        .fail(function(jqXHR, textStatus, errorThrown){
-            console.log('** (err_getPageItem_post)', thisItemId);
-            processErrors(jqXHR);
-        });    
+        } else {
+            console.log('** (err_getPageItem_data.status)', data.error, thisItemId);
+            done(data.error, null)
+        }
+        
+    }, 'json')
+    .fail(function(jqXHR, textStatus, errorThrown){
+        console.log('** (err_getPageItem_post)', thisItemId);
+        processErrors(jqXHR);
     });
-   
 }
 
 
@@ -1007,7 +993,7 @@ function downloadAllAttachment(done)
 {
     //currentAttachmentIndex = 1;
                     
-    if (attachments && currentAttachmentIndex < attachments.length) {
+    if (currentAttachmentIndex < attachments.length) {
         
 
         var attachment = attachments[currentAttachmentIndex];
