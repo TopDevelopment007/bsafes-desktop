@@ -1812,12 +1812,13 @@ async function downloadItemByItemID(arrList, done) {
 
   if (arrList.length < 1) {
     //console.log('finished', arrList);
+    ipcRenderer.send( "selectDownload", true );
     done();
     return;
   }
-
+  
   itemID = arrList[0];
-
+  dbInsertDownloadList(itemID);
   $(".remainNumber").html(arrList.length);
 
   var itemType = checkItemType(itemID);
@@ -1843,10 +1844,8 @@ async function downloadItemByItemID(arrList, done) {
         function(dbData, textStatus, jQxhr) {
           if (
             serverData.status === "ok" &&
-            (!dbData.item ||
-              serverData.item.version != dbData.item.version)
+            (!dbData.item || serverData.item.version != dbData.item.version)
           ) {
-            dbInsertDownloadList(itemID);
             totalNumber++;
             $(".totalNumber").html(totalNumber);
             setContainerAndTeamOfPage(itemID).then(() => {
@@ -1952,55 +1951,49 @@ function downloadListAndPage(itemId, fn) {
   var pageList = [];
   var isDownload = 1;
 
-  if (type == "page") {
-    //dbInsertPages(itemId);
-    //var remote = require ("electron").remote;
-    //const hello = remote.getGlobal("glbDownload")(itemId);
-  } else {
-    if (type == "container") {
-      reqUrl = server_addr + "/memberAPI/getContainerContents";
-      postData = { itemId: itemId, size: default_size, from: 0 };
-      db_fn = dbInsertContainers;
-    } else if (type == "team" || type == "personal") {
-      reqUrl = server_addr + "/memberAPI/listItems";
-      var currentSpace = itemId + ":" + "1" + ":" + "0";
-      postData = { container: currentSpace, size: default_size, from: 0 };
-      db_fn = dbInsertTeams;
-    }
-
-    $.post(
-      reqUrl,
-      postData,
-      function(data, textStatus, jQxhr) {
-        if (data.status === "ok") {
-          // get full item list.
-          if (data.hits.total > default_size) {
-            $.post(
-              reqUrl,
-              {
-                size: data.hits.total,
-                from: 0
-              },
-              function(total_data, textStatus, jQxhr) {
-                if (total_data.status === "ok") {
-                  db_fn(reqUrl, itemId, total_data, isDownload);
-                  callback_fn(total_data.hits.hits);
-                } else {
-                  console.log("err:(" + reqUrl + ")", total_data);
-                }
-              }
-            );
-          } else {
-            db_fn(reqUrl, itemId, data, isDownload);
-            callback_fn(data.hits.hits);
-          }
-        }
-      },
-      "json"
-    ).fail(function(jqXHR, textStatus, errorThrown) {
-      processErrorsInSelecting(jqXHR);
-    });
+  if (type == "container") {
+    reqUrl = server_addr + "/memberAPI/getContainerContents";
+    postData = { itemId: itemId, size: default_size, from: 0 };
+    db_fn = dbInsertContainers;
+  } else if (type == "team" || type == "personal") {
+    reqUrl = server_addr + "/memberAPI/listItems";
+    var currentSpace = itemId + ":" + "1" + ":" + "0";
+    postData = { container: currentSpace, size: default_size, from: 0 };
+    db_fn = dbInsertTeams;
   }
+
+  $.post(
+    reqUrl,
+    postData,
+    function(data, textStatus, jQxhr) {
+      if (data.status === "ok") {
+        // get full item list.
+        if (data.hits.total > default_size) {
+          $.post(
+            reqUrl,
+            {
+              size: data.hits.total,
+              from: 0
+            },
+            function(total_data, textStatus, jQxhr) {
+              if (total_data.status === "ok") {
+                db_fn(reqUrl, itemId, total_data, isDownload);
+                callback_fn(total_data.hits.hits);
+              } else {
+                console.log("err:(" + reqUrl + ")", total_data);
+              }
+            }
+          );
+        } else {
+          db_fn(reqUrl, itemId, data, isDownload);
+          callback_fn(data.hits.hits);
+        }
+      }
+    },
+    "json"
+  ).fail(function(jqXHR, textStatus, errorThrown) {
+    processErrorsInSelecting(jqXHR);
+  });
 }
 
 async function setContainerAndTeamOfPage(pageId) {

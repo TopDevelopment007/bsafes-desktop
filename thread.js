@@ -70,8 +70,7 @@ init();
 //setInterval(interval, 500);
 //interval();
 
-function interval()
-{
+function interval() {
     var isStopped = require('electron').remote.getGlobal('isStopped');
 
     if (isStopped) {
@@ -91,30 +90,30 @@ function interval()
 	        dbGetDownloadsListFromPages(function(arrPageList){
 	            arrPage = arrPageList;
 
-	            if (arrPageList.length > 0) {
-	            	ipcRenderer.send( "selectDownload", true );
-	            	currentPage = arrPageList[0];   
-		            console.log('======currentPage', currentPage);   
+                if (require('electron').remote.getGlobal('isSelectDown')) {
+                    if (arrPageList.length > 0) {
+                        currentPage = arrPageList[0];   
+                        console.log('======currentPage', currentPage);   
+    
+                          isSkipGetItem = false;
+                        isSkipContent = false;
+                        isSkipContentImage = false;
+                        isSkipContentVideo = false;
+                        isSkipImage = false;
+                        isSkipAttach = false;
+                        downloadPage(currentPage);
+                    } else {
+                        saveLog( 'completed', '', 1 );
+                        var msg = {};
+                        msg.msg = 'Complete to downloading items.';  
+                        msg.type = 'info';   
+                        ipcRenderer.send( "showDialong", msg );
+                        ipcRenderer.send( "selectDownload", false );
+                    }    
+                }
 
-		      		isSkipGetItem = false;
-		            isSkipContent = false;
-		            isSkipContentImage = false;
-					isSkipContentVideo = false;
-		            isSkipImage = false;
-		            isSkipAttach = false;
-		            downloadPage(currentPage);
-	            } else {
-	            	if (require('electron').remote.getGlobal('isSelectDown')) {
-		                saveLog( 'completed', '', 1 );
-		                var msg = {};
-		                msg.msg = 'Complete to downloading items.';  
-	        			msg.type = 'info';   
-		                ipcRenderer.send( "showDialong", msg );
-		                ipcRenderer.send( "selectDownload", false );
-		                
-		            }
-		            setTimeout(interval, 1000);
-	            } 
+                setTimeout(interval, 50);
+	            
 	        });
 	    } else {
 	    	//console.log('** waiting_currentPage = ', currentPage);
