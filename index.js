@@ -3,6 +3,7 @@ const path = require('path')
 const url = require('url')
 const fs = require('fs')
 const ejse = require('ejs-electron')
+const appConfig = require("./config");
 var sqlite3 = require('sqlite3').verbose();
 var databaseFile = 'BSafes.db';
 var db = null;
@@ -54,6 +55,10 @@ function createWindow () {
   .then((result) => {
     //console.log(result);
   })
+
+  if(appConfig.debugEnabled && appConfig.showDevTools){
+    win.webContents.openDevTools();
+  }
 
   // clear cache.
   let session = win.webContents.session;

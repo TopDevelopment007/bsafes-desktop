@@ -22,12 +22,32 @@ function dbInsertDownloadList(itemId) // edi_ok
 	var table = 'downloadList';
 
 	var sql = "SELECT id FROM " + table + " WHERE itemId = ?";
-	db.get(sql, itemId, function(err, row) {
-		if (err) {
-			console.log(err, 'dbInsertDownloadList');
-		} else if (row == undefined) {
-			db.run("INSERT INTO " + table + " (itemId) VALUES (?)", itemId);				
-		} 
+	
+	var pathToItemSql = "SELECT itemId, jsonData from itemPath where itemId = ?";
+
+	db.get(pathToItemSql, itemId, function(err, row){
+		var itemsToInsert = [itemId];
+		var blobData = [];
+
+		if(err){
+			console.error(err, "dbInsertDownloadList");
+		}else if(row !== undefined){
+			blobData = BSON.deserialize(row.jsonData);
+			for(let path of blobData.itemPath){
+				itemsToInsert.push(path._id);
+			}
+		}
+
+		for(itemId of itemsToInsert){
+			let id = itemId;
+			db.get(sql, itemId, function(err, row) {
+				if (err) {
+					console.log(err, 'dbInsertDownloadList');
+				} else if (row == undefined) {
+					db.run("INSERT INTO " + table + " (itemId) VALUES (?)", id);				
+				}
+			});	
+		}	
 	});
 }
 
