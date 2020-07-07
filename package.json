@@ -20,7 +20,7 @@
     "worker-farm": "^1.7.0"
   },
   "devDependencies": {
-    "electron": "^1.8.8",
+    "electron": "^7.2.4",
     "electron-builder": "^20.3.0",
     "electron-rebuild": "^1.8.5"
   },
